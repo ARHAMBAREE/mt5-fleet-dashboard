@@ -25,7 +25,7 @@ export default function SummaryCards({ totals, currency = "" }: { totals: Totals
     { label: "Offline", value: String(totals.offline), cls: totals.offline > 0 ? "bad" : "" },
     { label: "Total Balance", value: cash(totals.totalBalance), cls: "" },
     { label: "Total Equity", value: cash(totals.totalEquity), cls: "accent" },
-    { label: "Floating P/L", value: cash(totals.floatingPl, true), cls: (totals.floatingPl ?? 0) >= 0 ? "good" : "bad" },
+    { label: "Total P/L", value: cash(totals.floatingPl, true), cls: (totals.floatingPl ?? 0) >= 0 ? "good" : "bad", sub: "Combined floating P/L" },
     { label: "Highest Drawdown", value: `${totals.totalDrawdownPct.toFixed(2)}%`, cls: totals.totalDrawdownPct > 10 ? "bad" : "" },
     { label: "Open Positions", value: String(totals.openPositions), cls: "accent" },
   ];
