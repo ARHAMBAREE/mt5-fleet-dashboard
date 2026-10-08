@@ -1,3 +1,4 @@
+import { getGoldTargets } from "@/lib/queries/gold";
 import { fleetQuerySchema } from "@/lib/validation/schemas";
 import { withAuth } from "@/lib/auth/guard";
 import { getAccountSummaries, type AccountFilters } from "@/lib/queries/accounts";
@@ -10,6 +11,9 @@ export const dynamic = "force-dynamic";
  */
 export const GET = withAuth({ limit: { key: "accounts", limit: 240, windowSec: 60 } }, async (req, ctx) => {
   const filters = fleetQuerySchema.parse(Object.fromEntries([...req.nextUrl.searchParams].filter(([, value]) => value !== "")));
-  const data = await getAccountSummaries(ctx.user.id, filters);
-  return Response.json(data);
+  const [data, goldTargets] = await Promise.all([
+    getAccountSummaries(ctx.user.id, filters),
+    req.nextUrl.searchParams.get("includeGold") === "1" ? getGoldTargets(ctx.user.id) : Promise.resolve(undefined),
+  ]);
+  return Response.json({ ...data, ...(goldTargets ? { goldTargets } : {}) });
 });

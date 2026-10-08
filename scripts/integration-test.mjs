@@ -55,6 +55,7 @@ try {
   assert.equal((await api('/agent/positions',{method:'POST',bearer,body:{...identity,server:'Other',full:true,positions:[]}})).status,409);
   const accounts=ok(await api('/accounts',{cookie})); assert.equal(accounts.rows.length,1);
   const id=accounts.rows[0].id; assert.equal(accounts.rows[0].floatingPl,50);
+  const gold=ok(await api('/accounts?includeGold=1',{cookie})); assert.equal(gold.goldTargets.length,1); assert.equal(gold.goldTargets[0].magic,position.magic); assert.equal(gold.goldTargets[0].currentPrice,2050);
   socket=new WebSocket('ws://localhost:13401/api/ws',{headers:{Cookie:cookie,Origin:env.APP_URL}});
   await Promise.race([once(socket,'open'),new Promise((_,reject)=>setTimeout(()=>reject(new Error('WS connect timeout')),5000))]);
   const replay=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('WS replay timeout')),6000);socket.on('message',raw=>{const event=JSON.parse(raw.toString());if(event.id){clearTimeout(timer);resolve(event);}});});
@@ -80,6 +81,7 @@ try {
   const second=await api('/auth/register',{method:'POST',body:{email:'other@example.invalid',password:'FleetTest!Only123',name:'Other test'}});ok(second);
   assert.equal((await api(`/accounts/${id}`,{cookie:second.cookie})).status,404);
   assert.equal(ok(await api('/accounts',{cookie:second.cookie})).rows.length,0);
+  assert.equal(ok(await api('/accounts?includeGold=1',{cookie:second.cookie})).goldTargets.length,0);
   // Unlimited retention must preserve old snapshots, while 7d removes only snapshots.
   await client.query('UPDATE equity_snapshots SET at = NOW() - INTERVAL \'400 days\'');
   ok(await api('/settings',{method:'PUT',cookie,body:{key:'retention',value:{period:'unlimited'}}}));

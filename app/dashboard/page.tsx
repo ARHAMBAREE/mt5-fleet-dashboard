@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 
+import GoldTargets from "@/components/dashboard/GoldTargets";
+import type { GoldTarget } from "@/shared/gold";
 import SummaryCards from "@/components/dashboard/SummaryCards";
 import AccountsTable from "@/components/accounts/AccountsTable";
 import { useResource } from "@/lib/client/useResource";
@@ -10,6 +12,7 @@ import type { AccountSummary } from "@/shared/types";
 import { fmtDateTime } from "@/lib/format";
 
 interface AccountsPayload {
+  goldTargets?: GoldTarget[];
   rows: AccountSummary[];
   totals: {
     totalAccounts: number; online: number; warning: number; offline: number;
@@ -33,7 +36,7 @@ interface AlertsPayload {
 
 export default function DashboardPage() {
   const [currency, setCurrency] = useState("");
-  const accounts = useResource<AccountsPayload>(() => apiGet("/api/accounts", { currency }), [currency]);
+  const accounts = useResource<AccountsPayload>(() => apiGet("/api/accounts", { currency, includeGold: "1" }), [currency]);
   const alerts = useResource<AlertsPayload>(() => apiGet("/api/alerts"), []);
 
   useLiveRefresh(() => {
@@ -58,6 +61,7 @@ export default function DashboardPage() {
       </div>
 
       <SummaryCards totals={totals} />
+      <GoldTargets targets={accounts.data?.goldTargets ?? []} error={accounts.error} loading={accounts.loading} />
 
       <div className="card tight mb">
         <div style={{ padding: "14px 16px 0" }}>
