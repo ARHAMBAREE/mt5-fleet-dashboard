@@ -1,0 +1,36 @@
+appId: com.mt5fleet.dashboard
+productName: MT5 Fleet Dashboard
+asar: true
+directories:
+  output: release
+files:
+  - dist-electron/electron/**/*.js
+  - package.json
+extraMetadata:
+  main: dist-electron/electron/main.js
+extraResources:
+  - from: electron/assets
+    to: desktop
+  - from: public/icons
+    to: icons
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: public/icons/icon.ico
+  artifactName: MT5-Fleet-Dashboard-${version}-Setup.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+mac:
+  target: [dmg, zip]
+  category: public.app-category.finance
+  icon: public/icons/icon-512.png
+  hardenedRuntime: true
+linux:
+  target: [AppImage, deb]
+  category: Finance
+  icon: public/icons
+publish: null

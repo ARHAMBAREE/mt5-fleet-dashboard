@@ -1,0 +1,441 @@
+// ---------------------------------------------------------------
+// MT5 Fleet Dashboard — PostgreSQL schema (Prisma)
+// All persistent state lives here. No server memory is authoritative.
+// ---------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & access
+// ---------------------------------------------------------------------------
+
+enum Role {
+  OWNER
+  ADMIN
+  VIEWER
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(OWNER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions       Session[]
+  agents         Agent[]
+  pairingCodes   PairingCode[]
+  accounts       Account[]
+  groups         Group[]
+  alerts         Alert[]
+  alertEvents    AlertEvent[]
+  settings       Setting[]
+  realtimeEvents RealtimeEvent[]
+
+  @@map("users")
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  userId     String
+  tokenHash  String   @unique // SHA-256 of the session token
+  userAgent  String?
+  ip         String?
+  expiresAt  DateTime
+  lastUsedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ---------------------------------------------------------------------------
+// Agents (MT5 EA installations) & pairing
+// ---------------------------------------------------------------------------
+
+enum AgentStatus {
+  ACTIVE
+  REVOKED
+}
+
+model Agent {
+  id               String      @id @default(uuid())
+  userId           String
+  name             String
+  installationId   String      @unique // generated once per EA installation
+  credentialPrefix String      @unique // lookup handle of the issued credential
+  credentialHash   String // SHA-256 of the full credential — never stored in clear
+  status           AgentStatus @default(ACTIVE)
+  platform         String? // windows | macos | linux
+  terminalBuild    Int?
+  terminalCompany  String?
+  terminalName     String?
+  eaVersion        String?
+  fullSync         Boolean     @default(true) // request full resync on next heartbeat
+  pairedAt         DateTime    @default(now())
+  revokedAt        DateTime?
+  lastSeenAt       DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accounts    Account[]
+  heartbeat   Heartbeat?
+  pairingCode PairingCode[]
+
+  @@index([userId, status])
+  @@map("agents")
+}
+
+model PairingCode {
+  id         String    @id @default(uuid())
+  userId     String
+  codePrefix String    // first group of the code (ABC) for O(1) lookup
+  codeHash   String    @unique // HMAC-SHA256(AGENT_SECRET, full code)
+  label      String?
+  expiresAt  DateTime
+  usedAt     DateTime?
+  agentId    String?   @unique
+  createdAt  DateTime  @default(now())
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent Agent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
+
+  @@index([userId, expiresAt])
+  @@map("pairing_codes")
+}
+
+// ---------------------------------------------------------------------------
+// Trading accounts (one per MT5 login+server)
+// ---------------------------------------------------------------------------
+
+enum AccountMode {
+  LIVE
+  DEMO
+}
+
+model Account {
+  id                String      @id @default(uuid())
+  userId            String
+  agentId           String?
+  login             String
+  broker            String
+  server            String
+  currency          String      @default("USD")
+  mode              AccountMode @default(DEMO)
+
+  equityPeak        Float       @default(0)
+  maxDrawdownPct    Float       @default(0)
+
+  // Latest authoritative state (updated on every agent snapshot)
+  balance           Float       @default(0)
+  equity            Float       @default(0)
+  credit            Float       @default(0)
+  margin            Float       @default(0)
+  freeMargin        Float       @default(0)
+  marginLevel       Float       @default(0)
+  leverage          Int         @default(100)
+  tradeAllowed      Boolean     @default(true)
+  algoTrading       Boolean     @default(true)
+  terminalConnected Boolean     @default(false)
+
+  lastHeartbeatAt   DateTime?
+  snapshotAt        DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent        Agent?           @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  eaStatus     EaStatus?
+  snapshots    AccountSnapshot[]
+  equitySeries EquitySnapshot[]
+  positions    Position[]
+  orders       Order[]
+  groupLinks   AccountGroup[]
+  alertEvents  AlertEvent[]
+  alerts       Alert[]
+
+  @@unique([userId, login, server])
+  @@index([userId])
+  @@index([agentId])
+  @@map("accounts")
+}
+
+// EA health per account (1:1, last write wins)
+model EaStatus {
+  id                String   @id @default(uuid())
+  accountId         String   @unique
+  eaLoaded          Boolean  @default(false)
+  terminalConnected Boolean  @default(false)
+  algoTrading       Boolean  @default(true)
+  build             Int?
+  message           String?
+  lastHeartbeatAt   DateTime?
+  updatedAt         DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@map("ea_status")
+}
+
+// Latest heartbeat per agent installation
+model Heartbeat {
+  id                String   @id @default(uuid())
+  agentId           String   @unique
+  accountLogin      String?
+  broker            String?
+  server            String?
+  terminalConnected Boolean  @default(false)
+  eaLoaded          Boolean  @default(false)
+  build             Int?
+  at                DateTime @default(now())
+
+  agent Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("heartbeats")
+}
+
+// ---------------------------------------------------------------------------
+// Time series & trading records
+// ---------------------------------------------------------------------------
+
+model AccountSnapshot {
+  id          String   @id @default(uuid())
+  accountId   String
+  at          DateTime @default(now())
+  balance     Float
+  equity      Float
+  floatingPl  Float    @default(0)
+  margin      Float    @default(0)
+  freeMargin  Float    @default(0)
+  marginLevel Float    @default(0)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, at])
+  @@map("account_snapshots")
+}
+
+model EquitySnapshot {
+  id        String   @id @default(uuid())
+  accountId String
+  at        DateTime @default(now())
+  equity    Float
+  balance   Float
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, at])
+  @@index([at])
+  @@map("equity_snapshots")
+}
+
+enum PositionType {
+  BUY
+  SELL
+}
+
+model Position {
+  id           String       @id @default(uuid())
+  accountId    String
+  ticket       String // MT5 ticket as string (64-bit safe)
+  symbol       String
+  type         PositionType
+  volume       Float
+  openPrice    Float
+  currentPrice Float
+  sl           Float        @default(0)
+  tp           Float        @default(0)
+  swap         Float        @default(0)
+  commission   Float        @default(0)
+  profit       Float        @default(0)
+  magic        String          @default("0")
+  comment      String       @default("")
+  openTime     DateTime
+  updatedAt    DateTime     @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, ticket])
+  @@index([accountId, symbol])
+  @@map("positions")
+}
+
+model Order {
+  id         String   @id @default(uuid())
+  accountId  String
+  ticket     String
+  symbol     String
+  type       String // ORDER_TYPE_* symbolic name
+  volume     Float
+  price      Float
+  sl         Float    @default(0)
+  tp         Float    @default(0)
+  magic      String      @default("0")
+  comment    String   @default("")
+  createTime DateTime
+  updatedAt  DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, ticket])
+  @@index([accountId, createTime])
+  @@map("orders")
+}
+
+
+// ---------------------------------------------------------------------------
+// Groups (many-to-many; accounts can belong to multiple groups)
+// ---------------------------------------------------------------------------
+
+model Group {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  color     String   @default("#3b82f6")
+  isSystem  Boolean  @default(false) // LIVE/DEMO seeds — not deletable
+  createdAt DateTime @default(now())
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  members AccountGroup[]
+
+  @@unique([userId, name])
+  @@map("groups")
+}
+
+model AccountGroup {
+  accountId String
+  groupId   String
+  addedAt   DateTime @default(now())
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([accountId, groupId])
+  @@map("account_groups")
+}
+
+// ---------------------------------------------------------------------------
+// Alerts
+// ---------------------------------------------------------------------------
+
+enum AlertType {
+  ACCOUNT_OFFLINE
+  EA_OFFLINE
+  DRAWDOWN_EXCEEDED
+  DAILY_LOSS_EXCEEDED
+  MARGIN_LEVEL_LOW
+  ALGO_TRADING_DISABLED
+  LARGE_POSITION
+  LARGE_LOSS
+  LARGE_PROFIT
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model Alert {
+  id              String        @id @default(uuid())
+  userId          String
+  name            String
+  type            AlertType
+  enabled         Boolean       @default(true)
+  threshold       Float         @default(0)
+  accountId       String? // null = applies to all accounts
+  cooldownSeconds Int           @default(300)
+  severity        AlertSeverity @default(WARNING)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account?     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  events  AlertEvent[]
+
+  @@index([userId, type])
+  @@map("alerts")
+}
+
+model AlertEvent {
+  id             String        @id @default(uuid())
+  alertId        String
+  accountId      String?
+  userId         String
+  type           AlertType
+  severity       AlertSeverity @default(WARNING)
+  value          Float
+  threshold      Float
+  message        String
+  dedupeKey      String        @unique // blocks duplicate firing within cooldown
+  triggeredAt    DateTime      @default(now())
+  acknowledgedAt DateTime?
+
+  alert   Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  account Account? @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, triggeredAt])
+  @@index([accountId, type, triggeredAt])
+  @@map("alert_events")
+}
+
+// ---------------------------------------------------------------------------
+// Settings (per-user key/value JSON — retention, thresholds, notifications)
+// ---------------------------------------------------------------------------
+
+model Setting {
+  id        String   @id @default(uuid())
+  userId    String
+  key       String
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("settings")
+}
+
+// ---------------------------------------------------------------------------
+// Infrastructure (rate limiting + durable realtime resync stream)
+// ---------------------------------------------------------------------------
+
+model RateLimit {
+  key         String
+  windowStart DateTime
+  count       Int      @default(1)
+  updatedAt   DateTime @updatedAt
+
+  @@id([key, windowStart])
+  @@map("rate_limits")
+}
+
+// Durable event log — SSE/WS consumers read from here; DB is the source of truth.
+model RealtimeEvent {
+  id        BigInt   @id @default(autoincrement())
+  userId    String
+  type      String // "accounts:update" | "alerts:new" | "agents:update" | ...
+  data      Json
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, id])
+  @@index([createdAt])
+  @@map("realtime_events")
+}
+
+

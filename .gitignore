@@ -1,0 +1,43 @@
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+
+# production
+/build
+/dist
+/dist-electron
+/release
+
+# env — never commit secrets
+.env
+.env.*
+!.env.example
+
+# vercel
+.vercel
+
+# prisma
+prisma/*.db
+
+# logs & os
+npm-debug.log*
+yarn-error.log*
+*.log
+.DS_Store
+*.tsbuildinfo
+
+# editors
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+.local/
+electron/assets/config.json
+public/downloads/
+
+.next-dev/
+*.ex5

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build:vercel",
+  "regions": [
+    "iad1"
+  ],
+  "functions": {
+    "app/api/realtime/stream/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/agent/**/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/cron/**/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/ws/route.ts": {
+      "maxDuration": 300
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/maintenance",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
