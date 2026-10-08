@@ -44,7 +44,7 @@ Generate each secret independently with `openssl rand -base64 48`. Do not commit
 4. The build command runs **Prisma migrations before building**, using `DIRECT_URL`. Keep the transaction pooler `DATABASE_URL` for runtime; Supabase uses ports 5432 and 6543 respectively. Configure both variables in Vercel. Do not share a production database with untrusted preview deployments.
 5. Deploy using `npx vercel` or `npx vercel --prod`, or connect a Git repository in Vercel. This folder was not originally a Git checkout; initialize/push a private repository if you want automatic Git deployments.
 6. Add your custom domain under Project → Settings → Domains and follow Vercel's DNS instructions. Set both app URL variables to that origin and redeploy. The EA, browser, and desktop must all use that same origin.
-7. `vercel.json` schedules maintenance every five minutes. **This schedule requires a plan that supports frequent cron jobs**. On a restricted plan, change it to the supported frequency and accept delayed background offline alerts/retention, or use an authenticated external scheduler.
+7. `vercel.json` schedules maintenance daily for Vercel Hobby compatibility. Background offline alerts and retention cleanup run daily; displayed account health and live telemetry continue updating independently.
 8. Exempt agent endpoints from interactive Vercel Deployment Protection on the production domain so MT5 can reach them. App-level agent credentials remain required.
 
 The app is not deployed by building it locally. You must create and configure your Vercel/database accounts before it is publicly available. See [deployment details](docs/deployment.md).

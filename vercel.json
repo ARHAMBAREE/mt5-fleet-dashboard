@@ -4,7 +4,7 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build:vercel",
   "regions": [
-    "iad1"
+    "sin1"
   ],
   "functions": {
     "app/api/realtime/stream/route.ts": {
@@ -23,7 +23,7 @@
   "crons": [
     {
       "path": "/api/cron/maintenance",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }

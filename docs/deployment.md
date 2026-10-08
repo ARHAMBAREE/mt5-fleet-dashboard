@@ -8,7 +8,7 @@ Configure Vercel's production variables from README and use a separately isolate
 
 Fluid Compute WebSockets use the documented experimental API and are disposable. Vercel stops connections at function duration; client reconnect/resync is expected. SSE and REST refresh remain available. Sources: [Vercel WebSockets](https://vercel.com/docs/functions/websockets), [upgrade API and local development](https://vercel.com/docs/functions/functions-api-reference/vercel-functions-package#experimental_upgradewebsocket), [Node versions](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions).
 
-Cron calls `/api/cron/maintenance` with `CRON_SECRET`. The included five-minute schedule requires a compatible plan. [Vercel cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing) determine available frequency. A less frequent schedule increases background alert/cleanup delay; foreground liveness still derives from timestamps on every refresh. Do not expose an unauthenticated maintenance endpoint to work around cron setup.
+Cron calls `/api/cron/maintenance` with `CRON_SECRET`. The included daily schedule works within Hobby scheduling limits; background offline alert evaluation and cleanup can be delayed until the next daily run. [Vercel cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing) determine available frequency. A less frequent schedule increases background alert/cleanup delay; foreground liveness still derives from timestamps on every refresh. Do not expose an unauthenticated maintenance endpoint to work around cron setup.
 
 Verify after deployment:
 

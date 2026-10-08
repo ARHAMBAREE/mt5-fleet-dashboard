@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+.local
+.next
+.next-dev
+node_modules
+dist
+dist-electron
+release
+electron/assets/config.json
+*.tsbuildinfo
+mt5-agent/*.ex5
