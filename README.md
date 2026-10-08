@@ -17,7 +17,7 @@ If you already have PostgreSQL:
 
 ```sh
 cp .env.example .env
-# Fill in DATABASE_URL, AUTH_SECRET, AGENT_SECRET, CRON_SECRET.
+# Fill in DATABASE_URL, DIRECT_URL, AUTH_SECRET, AGENT_SECRET, CRON_SECRET.
 # APP_URL and NEXT_PUBLIC_APP_URL = http://localhost:3000 for local development.
 npm run db:migrate
 npm run dev
@@ -34,13 +34,14 @@ Generate each secret independently with `openssl rand -base64 48`. Do not commit
 | Variable | Value | Public? |
 | --- | --- | --- |
 | `DATABASE_URL` | Provider's TLS PostgreSQL URL, preferably a connection pool endpoint | No |
+| `DIRECT_URL` | Migration connection; Supabase session pooler on port 5432. For local PostgreSQL, use DATABASE_URL’s value | No |
 | `AUTH_SECRET` | Independent random 48-byte secret for session signing | No |
 | `AGENT_SECRET` | Independent random 48-byte secret for pairing HMAC | No |
 | `CRON_SECRET` | Independent random secret for maintenance authorization | No |
 | `APP_URL` | Canonical HTTPS origin, without path/trailing slash | No secret, server configuration |
 | `NEXT_PUBLIC_APP_URL` | The same HTTPS origin | Yes |
 
-4. The build command runs **Prisma migrations before building**. Use a database endpoint that supports migrations. With a provider that requires a direct migration connection, run `npm run db:migrate` in a release job with its direct URL and change the Vercel build command to `npm run build`. Keep pooled `DATABASE_URL` for runtime. Do not share a production database with untrusted preview deployments.
+4. The build command runs **Prisma migrations before building**, using `DIRECT_URL`. Keep the transaction pooler `DATABASE_URL` for runtime; Supabase uses ports 5432 and 6543 respectively. Configure both variables in Vercel. Do not share a production database with untrusted preview deployments.
 5. Deploy using `npx vercel` or `npx vercel --prod`, or connect a Git repository in Vercel. This folder was not originally a Git checkout; initialize/push a private repository if you want automatic Git deployments.
 6. Add your custom domain under Project → Settings → Domains and follow Vercel's DNS instructions. Set both app URL variables to that origin and redeploy. The EA, browser, and desktop must all use that same origin.
 7. `vercel.json` schedules maintenance every five minutes. **This schedule requires a plan that supports frequent cron jobs**. On a restricted plan, change it to the supported frequency and accept delayed background offline alerts/retention, or use an authenticated external scheduler.

@@ -11,7 +11,7 @@ import { once } from 'node:events';
 const temp = mkdtempSync(join(tmpdir(), 'mt5-fleet-test-'));
 const port = 15432, webPort = 13400;
 const password = randomBytes(20).toString('hex');
-const env = { ...process.env, DATABASE_URL: `postgresql://fleet:${password}@127.0.0.1:${port}/fleet`, AUTH_SECRET: randomBytes(48).toString('hex'), AGENT_SECRET: randomBytes(48).toString('hex'), CRON_SECRET: randomBytes(32).toString('hex'), APP_URL: `http://localhost:${webPort}`, NEXT_PUBLIC_APP_URL: `http://localhost:${webPort}` };
+const env = { ...process.env, DIRECT_URL: `postgresql://fleet:${password}@127.0.0.1:${port}/fleet`, DATABASE_URL: `postgresql://fleet:${password}@127.0.0.1:${port}/fleet`, AUTH_SECRET: randomBytes(48).toString('hex'), AGENT_SECRET: randomBytes(48).toString('hex'), CRON_SECRET: randomBytes(32).toString('hex'), APP_URL: `http://localhost:${webPort}`, NEXT_PUBLIC_APP_URL: `http://localhost:${webPort}` };
 const pg = new EmbeddedPostgres({ databaseDir: join(temp, 'db'), user: 'fleet', password, port, persistent: false, authMethod: 'scram-sha-256', postgresFlags: ['-h', '127.0.0.1', '-k', temp], onLog: () => {}, onError: () => {} });
 let server, client, wsServer, socket;
 let logs = '';
