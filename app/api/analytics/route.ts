@@ -1,1 +1,1 @@
-export { GET } from "@/api/analytics/index";
+export { GET } from "@/server/http/analytics/index";

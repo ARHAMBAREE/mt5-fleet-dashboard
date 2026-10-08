@@ -17,7 +17,7 @@ flowchart TD
   DESK <--> RT
 ```
 
-`app/api/**/route.ts` exposes handlers implemented in `api/`. `server/agent` ingests telemetry and evaluates alerts; `lib/queries` projects persisted state; `lib/realtime` consumes the event log. Electron packages contain only the shell, resources, and required runtime modules; no backend database or credentials. Local embedded PostgreSQL and the standalone WebSocket server are development tools only.
+`app/api/**/route.ts` exposes handlers implemented in `server/http/` (kept outside the root `api/` directory so Vercel does not create duplicate standalone functions). `server/agent` ingests telemetry and evaluates alerts; `lib/queries` projects persisted state; `lib/realtime` consumes the event log. Electron packages contain only the shell, resources, and required runtime modules; no backend database or credentials. Local embedded PostgreSQL and the standalone WebSocket server are development tools only.
 
 ## Database
 

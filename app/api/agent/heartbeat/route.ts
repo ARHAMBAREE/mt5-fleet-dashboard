@@ -1,1 +1,1 @@
-export { POST } from "@/api/agent/heartbeat";
+export { POST } from "@/server/http/agent/heartbeat";

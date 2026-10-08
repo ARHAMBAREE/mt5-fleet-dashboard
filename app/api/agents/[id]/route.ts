@@ -1,1 +1,1 @@
-export { PATCH, DELETE } from "@/api/agents/[id]";
+export { PATCH, DELETE } from "@/server/http/agents/[id]";

@@ -1,1 +1,1 @@
-export { GET, POST } from "@/api/agents/index";
+export { GET, POST } from "@/server/http/agents/index";

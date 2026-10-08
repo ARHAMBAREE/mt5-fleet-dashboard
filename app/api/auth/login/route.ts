@@ -1,1 +1,1 @@
-export { POST } from "@/api/auth/login";
+export { POST } from "@/server/http/auth/login";

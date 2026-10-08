@@ -1,1 +1,1 @@
-export { GET, POST } from "@/api/alerts/events";
+export { GET, POST } from "@/server/http/alerts/events";

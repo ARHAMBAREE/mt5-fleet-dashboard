@@ -1,1 +1,1 @@
-export { POST } from "@/api/auth/register";
+export { POST } from "@/server/http/auth/register";

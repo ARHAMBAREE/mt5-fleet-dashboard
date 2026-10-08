@@ -1,1 +1,1 @@
-export { GET, POST, PUT, DELETE } from "@/api/groups/index";
+export { GET, POST, PUT, DELETE } from "@/server/http/groups/index";

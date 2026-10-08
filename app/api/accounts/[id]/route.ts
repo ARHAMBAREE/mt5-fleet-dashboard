@@ -1,1 +1,1 @@
-export { GET } from "@/api/accounts/[id]";
+export { GET } from "@/server/http/accounts/[id]";
