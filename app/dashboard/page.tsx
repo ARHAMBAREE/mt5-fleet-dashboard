@@ -17,6 +17,7 @@ interface AccountsPayload {
   totals: {
     totalAccounts: number; online: number; warning: number; offline: number;
     totalBalance: number | null; totalEquity: number | null; floatingPl: number | null;
+    todayRealizedPl: number | null; realizedReportingAccounts: number;
     totalDrawdownPct: number; openPositions: number;
   };
 }
@@ -46,12 +47,12 @@ export default function DashboardPage() {
 
   const totals = accounts.data?.totals ?? {
     totalAccounts: 0, online: 0, warning: 0, offline: 0,
-    totalBalance: 0, totalEquity: 0, floatingPl: 0,
+    totalBalance: 0, totalEquity: 0, floatingPl: 0, todayRealizedPl: null, realizedReportingAccounts: 0,
     totalDrawdownPct: 0, openPositions: 0,
   };
 
   return (
-    <div>
+    <div className={totals.todayRealizedPl == null || totals.floatingPl == null ? "" : totals.todayRealizedPl > totals.floatingPl ? "pnl-above" : totals.todayRealizedPl < totals.floatingPl ? "pnl-below" : ""}>
       <div className="page-head">
         <h2>Fleet Overview</h2>
         <span className="small muted">USD and USC accounts together · amounts shown as reported</span>

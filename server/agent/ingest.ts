@@ -49,6 +49,8 @@ export async function ingestSnapshot(agent: { id: string; userId: string }, acc:
     where: { id: account.id },
     data: {
       equityPeak, maxDrawdownPct,
+      todayRealizedPl: acc.todayRealizedPl ?? null,
+      realizedPlDay: acc.realizedPlDay ?? null,
       agentId: agent.id,
       broker: acc.broker || account.broker,
       currency: acc.currency,

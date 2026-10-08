@@ -70,6 +70,12 @@ try {
   assert.equal((await client.query("SELECT to_regclass('public.deals') AS name")).rows[0].name,null);
   const detail=ok(await api(`/accounts/${id}`,{cookie}));assert.equal(detail.risk.equityPeak,1050); assert.equal("history" in detail,false); assert.equal("dailyPl" in detail.risk,false);
   ok(await api('/agent/snapshot',{method:'POST',bearer,body:{v:1,account:{...account,server:'Test-EUR',currency:'EUR'}}}));
+  const reportingDay=new Date(Date.now()+18000000).toISOString().slice(0,10);
+  assert.equal(ok(await api('/accounts?currency=USD',{cookie})).totals.todayRealizedPl,null);
+  ok(await api('/agent/snapshot',{method:'POST',bearer,body:{v:1,account:{...account,todayRealizedPl:125,realizedPlDay:reportingDay}}}));
+  assert.equal(ok(await api('/accounts?currency=USD',{cookie})).totals.todayRealizedPl,125);
+  ok(await api('/agent/snapshot',{method:'POST',bearer,body:{v:1,account:{...account,todayRealizedPl:999,realizedPlDay:'2000-01-01'}}}));
+  assert.equal(ok(await api('/accounts?currency=USD',{cookie})).totals.todayRealizedPl,null);
   const mixed=ok(await api('/accounts',{cookie}));assert.equal(mixed.rows.length,2);assert.equal(mixed.totals.totalBalance,null);
   const mixedAnalytics=ok(await api('/analytics',{cookie}));assert.equal(mixedAnalytics.totals.combinedEquity,null);assert.equal(mixedAnalytics.series.length,0);
   ok(await api('/agent/snapshot',{method:'POST',bearer,body:{v:1,account:{...account,equity:840}}}));

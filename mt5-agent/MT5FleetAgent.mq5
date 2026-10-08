@@ -1,6 +1,6 @@
 // MT5 Fleet Dashboard — monitoring only. No trading functions or DLL imports.
 #property strict
-#property version "1.01"
+#property version "1.02"
 #property description "Read-only account telemetry over HTTPS. Pair with your MT5 Fleet Dashboard."
 input string ServerURL = "";
 input string PairingCode = "";
@@ -102,7 +102,7 @@ bool Post(string endpoint,string body,string &response,bool pairing=false) {
 bool Pair() {
   if(PairingCode=="") { state="ENTER PAIRING CODE"; return false; }
   string response;
-  string body="{\"v\":1,\"pairingCode\":"+Q(PairingCode)+",\"installationId\":"+Q(installation)+",\"platform\":\"windows\",\"terminalBuild\":"+I(TerminalInfoInteger(TERMINAL_BUILD))+",\"terminalCompany\":"+Q(TerminalInfoString(TERMINAL_COMPANY))+",\"terminalName\":"+Q(TerminalInfoString(TERMINAL_NAME))+",\"eaVersion\":\"1.01\"}";
+  string body="{\"v\":1,\"pairingCode\":"+Q(PairingCode)+",\"installationId\":"+Q(installation)+",\"platform\":\"windows\",\"terminalBuild\":"+I(TerminalInfoInteger(TERMINAL_BUILD))+",\"terminalCompany\":"+Q(TerminalInfoString(TERMINAL_COMPANY))+",\"terminalName\":"+Q(TerminalInfoString(TERMINAL_NAME))+",\"eaVersion\":\"1.02\"}";
   if(!Post("register",body,response,true)) return false;
   credential=Field(response,"credential"); agent_id=Field(response,"agentId");
   if(credential=="" || agent_id=="") return false;
@@ -117,6 +117,24 @@ bool Heartbeat() {
   if(h>0) hb_seconds=MathMax(2,h); if(s>0) snap_seconds=MathMax(2,s);
   last_heartbeat=TimeLocal(); return true;
 }
+// Sum booked trading profit and fees locally; never upload individual deals.
+bool DailyRealized(double &profit,string &day) {
+  long utc=(long)TimeGMT();
+  long day_start=((utc+18000)/86400)*86400-18000;
+  MqlDateTime parts; TimeToStruct((datetime)(utc+18000),parts);
+  day=StringFormat("%04d-%02d-%02d",parts.year,parts.mon,parts.day);
+  long offset=BrokerUTCOffsetMinutes==9999 ? (long)MathRound((double)(TimeTradeServer()-TimeGMT())/900.0)*900 : (long)BrokerUTCOffsetMinutes*60;
+  if(!TerminalInfoInteger(TERMINAL_CONNECTED) || !HistorySelect((datetime)(day_start+offset),TimeTradeServer())) return false;
+  profit=0;
+  for(int i=0;i<HistoryDealsTotal();i++) {
+    ulong ticket=HistoryDealGetTicket(i);
+    if(ticket==0) return false;
+    long kind=HistoryDealGetInteger(ticket,DEAL_TYPE);
+    if(kind!=DEAL_TYPE_BUY && kind!=DEAL_TYPE_SELL) continue;
+    profit+=HistoryDealGetDouble(ticket,DEAL_PROFIT)+HistoryDealGetDouble(ticket,DEAL_SWAP)+HistoryDealGetDouble(ticket,DEAL_COMMISSION)+HistoryDealGetDouble(ticket,DEAL_FEE);
+  }
+  return true;
+}
 bool Snapshot() {
   string response;
   string a="\"login\":"+Q(Login())+",\"broker\":"+Q(AccountInfoString(ACCOUNT_COMPANY))+",\"server\":"+Q(AccountInfoString(ACCOUNT_SERVER))+",\"currency\":"+Q(AccountInfoString(ACCOUNT_CURRENCY));
@@ -124,6 +142,8 @@ bool Snapshot() {
   a+=",\"margin\":"+N(AccountInfoDouble(ACCOUNT_MARGIN))+",\"freeMargin\":"+N(AccountInfoDouble(ACCOUNT_MARGIN_FREE))+",\"marginLevel\":"+N(AccountInfoDouble(ACCOUNT_MARGIN_LEVEL));
   a+=",\"leverage\":"+I(AccountInfoInteger(ACCOUNT_LEVERAGE))+",\"mode\":"+Q(AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO ? "DEMO" : "LIVE");
   a+=",\"tradeAllowed\":"+B(AccountInfoInteger(ACCOUNT_TRADE_ALLOWED))+",\"algoTrading\":"+B(Algo())+",\"terminalConnected\":"+B(TerminalInfoInteger(TERMINAL_CONNECTED));
+  double realized=0; string day;
+  if(DailyRealized(realized,day)) a+=",\"todayRealizedPl\":"+N(realized)+",\"realizedPlDay\":"+Q(day);
   if(!Post("snapshot","{\"v\":1,\"account\":{"+a+"}}",response)) return false;
   last_snapshot=TimeLocal(); return true;
 }

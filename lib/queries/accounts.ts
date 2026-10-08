@@ -1,4 +1,5 @@
 import "server-only";
+import { todayRealized } from "@/lib/daily-pl";
 import { accountMoneyUnit } from "@/lib/currency";
 import { prisma } from "@/lib/database/prisma";
 import { deriveEaStatus } from "@/lib/status";
@@ -35,6 +36,8 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
     totalBalance: number | null;
     totalEquity: number | null;
     floatingPl: number | null;
+    todayRealizedPl: number | null;
+    realizedReportingAccounts: number;
     totalDrawdownPct: number;
     openPositions: number;
   };
@@ -42,7 +45,7 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
   const emptyTotals = {
     currencies: [] as string[],
     totalAccounts: 0, online: 0, warning: 0, offline: 0,
-    totalBalance: 0, totalEquity: 0, floatingPl: 0,
+    totalBalance: 0, totalEquity: 0, floatingPl: 0, todayRealizedPl: 0, realizedReportingAccounts: 0,
     totalDrawdownPct: 0, openPositions: 0,
   };
 
@@ -114,6 +117,7 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
       lastHeartbeatAt: lastBeat?.toISOString() ?? null,
       lastSeenLabel: "",
       floatingPl,
+      todayRealizedPl: todayRealized(a.todayRealizedPl, a.realizedPlDay, now) === null ? null : a.todayRealizedPl! * unit.factor,
       drawdownPct: currentDd,
       maxDrawdownPct: dd?.maxDdPct ?? 0,
       openPositions: openMap.get(a.id) ?? 0,
@@ -131,6 +135,8 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
   const mixed = currencies.length > 1;
   const totals = {
     currencies,
+    todayRealizedPl: mixed || rows.some(r => r.todayRealizedPl === null) ? null : rows.reduce((s, r) => s + r.todayRealizedPl!, 0),
+    realizedReportingAccounts: rows.filter(r => r.todayRealizedPl !== null).length,
     totalAccounts: rows.length,
     online: rows.filter((r) => r.eaStatus === "ONLINE").length,
     warning: rows.filter((r) => r.eaStatus === "WARNING").length,

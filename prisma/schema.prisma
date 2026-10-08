@@ -139,6 +139,9 @@ model Account {
   equityPeak        Float       @default(0)
   maxDrawdownPct    Float       @default(0)
 
+  todayRealizedPl   Float?
+  realizedPlDay     String?
+
   // Latest authoritative state (updated on every agent snapshot)
   balance           Float       @default(0)
   equity            Float       @default(0)
