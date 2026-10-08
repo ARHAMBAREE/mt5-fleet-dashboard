@@ -18,9 +18,9 @@ export default function GoldTargets({ targets, error, loading }: { targets: Gold
     <p className="small muted">XAUUSD / GOLD · prices in USD per ounce. Each row shows a grid’s last reported price (●) and shared take profit (◆). All accounts, regardless of the currency filter.</p>
     <p className="small muted">Grids are grouped by account, symbol, EA magic and direction. This is a price-level chart, not a candlestick feed. Broker prices may differ. Green = buy · red = sell · faded = stale or offline.</p>
     {error && <p role="alert" className="neg">Gold levels could not refresh: {error}. Previously loaded levels may be outdated.</p>}
-    {!targets.length ? <div className="empty">{loading ? "Loading gold positions…" : "No open XAUUSD or GOLD positions. Attach the MT5 agent to each account to see its take-profit levels here."}</div> : <div style={{ overflow: "auto", maxHeight: 520 }}>
-      <div style={{ minWidth: 900 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "240px 1fr 160px", position: "sticky", top: 0, background: "var(--bg, #111827)", zIndex: 1 }}>
+    {!targets.length ? <div className="empty">{loading ? "Loading gold positions…" : "No open XAUUSD or GOLD positions. Attach the MT5 agent to each account to see its take-profit levels here."}</div> : <div className="gold-scroll">
+      <div className="gold-chart">
+        <div className="gold-axis">
           <span className="small muted">Account / grid</span>
           <svg viewBox="0 0 720 36" width="100%" height="36" aria-hidden="true">
             {Array.from({length: 5}, (_, i) => min + (max-min)*i/4).map(n => <text key={n} x={x(n)} y="24" fill="currentColor" textAnchor="middle" fontSize="12">{price(n)}</text>)}
@@ -28,18 +28,18 @@ export default function GoldTargets({ targets, error, loading }: { targets: Gold
         </div>
         {grids.map(p => {
           const color = p.type === "BUY" ? "#22c55e" : "#f87171";
-          return <div key={p.id} style={{ display: "grid", gridTemplateColumns: "240px 1fr 160px", alignItems: "center", borderTop: "1px solid #334155", opacity: p.online && !error ? 1 : 0.6 }}>
-            <div style={{padding: "10px 0"}}><a href={`/accounts/${p.accountId}`}>{p.login}</a> <span style={{color}}>{p.type}</span> <span className="small muted">{p.volume} lots</span>
+          return <div key={p.id} className="gold-row" style={{ opacity: p.online && !error ? 1 : 0.6 }}>
+            <div className="gold-account"><a href={`/accounts/${p.accountId}`}>{p.login}</a> <span style={{color}}>{p.type}</span> <span className="small muted">{p.volume} lots</span>
               <div className="small muted">{p.server} · {p.symbol} · EA {p.magic} · {p.positionCount} trades</div>
               <div className="small muted">{p.online ? "Reported" : "Stale/offline"}: {fmtDateTime(p.updatedAt)}</div>
             </div>
-            <svg viewBox="0 0 720 60" width="100%" height="60" role="img" aria-label={`Account ${p.login}, ${p.type}, price ${p.currentPrice}, ${p.tp > 0 ? `take profit ${p.tp}` : "no shared grid take profit"}`}>
+            <svg className="gold-level" viewBox="0 0 720 60" width="100%" height="60" role="img" aria-label={`Account ${p.login}, ${p.type}, price ${p.currentPrice}, ${p.tp > 0 ? `take profit ${p.tp}` : "no shared grid take profit"}`}>
               <line x1="30" x2="690" y1="30" y2="30" stroke="#334155" />
               {p.currentPrice > 0 && p.tp > 0 && <line x1={x(p.currentPrice)} x2={x(p.tp)} y1="30" y2="30" stroke={color} strokeWidth="2" />}
               {p.currentPrice > 0 && <circle cx={x(p.currentPrice)} cy="30" r="5" fill="#fbbf24" />}
               {p.tp > 0 && <path d={`M ${x(p.tp)} 22 l 8 8 l -8 8 l -8 -8 Z`} fill={color} />}
             </svg>
-            <div className="num small"><div>{p.currentPrice > 0 ? price(p.currentPrice) : "No price"}</div><div style={{color}}>TP {p.tp > 0 ? price(p.tp) : p.tpState === "mixed" ? "differs across trades" : "not reported"}</div></div>
+            <div className="gold-prices num small"><div>Price {p.currentPrice > 0 ? price(p.currentPrice) : "No price"}</div><div style={{color}}>TP {p.tp > 0 ? price(p.tp) : p.tpState === "mixed" ? "differs across trades" : "not reported"}</div></div>
           </div>;
         })}
       </div>

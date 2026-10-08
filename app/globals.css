@@ -157,7 +157,7 @@ button { font-family: inherit; }
   padding: 13px 15px; position: relative; overflow: hidden;
 }
 .stat .label { font-size: 10.5px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-.stat .value { font-size: 21px; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.stat .value { overflow-x: auto; font-size: 18px; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; }
 .stat .sub { font-size: 11.5px; color: var(--muted-2); margin-top: 3px; }
 .stat.accent::after, .stat.good::after, .stat.bad::after {
   content: ""; position: absolute; inset: auto 0 0 0; height: 2px; opacity: 0.7;
@@ -167,8 +167,8 @@ button { font-family: inherit; }
 .stat.bad::after { background: var(--red); }
 
 .grid { display: grid; gap: 14px; }
-.grid.cols-2 { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); }
-.grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.grid.cols-2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
 
 /* ---------- Badges & chips ---------- */
 .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap; }
@@ -317,3 +317,38 @@ label.field .lbl { display: block; font-size: 11.5px; color: var(--muted); font-
 
 
 
+
+/* Gold grid levels: shared scale on desktop, stacked grid cards on phones. */
+.gold-scroll { overflow: auto; max-height: 520px; }
+.gold-chart { min-width: 900px; }
+.gold-axis, .gold-row { display: grid; grid-template-columns: 240px minmax(0, 1fr) 160px; align-items: center; }
+.gold-axis { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.gold-row { border-top: 1px solid var(--border-2); }
+.gold-account { padding: 10px 0; overflow-wrap: anywhere; min-width: 0; }
+.gold-prices { overflow-wrap: anywhere; }
+@media (max-width: 960px) {
+  .gold-chart { min-width: 0; }
+  .gold-scroll { max-height: none; overflow: visible; }
+  .gold-axis { display: none; }
+  .gold-row { grid-template-columns: minmax(0, 1fr); padding: 10px 0; }
+  .gold-account { padding: 0; }
+  .gold-account > a { display: inline-flex; align-items: center; min-height: 44px; }
+  .gold-level { height: 40px; }
+  .gold-prices { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 14px; }
+  .card-title { flex-wrap: wrap; }
+  .card-title .right { margin-left: 0; }
+  .card, .grid > * { min-width: 0; }
+  .kv > * { min-width: 0; overflow-wrap: anywhere; }
+  .stat .value { font-size: clamp(14px, 4vw, 18px); overflow-wrap: normal; overflow-x: auto; }
+  .input, .select, textarea.input { font-size: 16px; min-height: 44px; }
+  .btn, .btn.sm, .tabs button, .chip { min-height: 44px; }
+  .bottomnav a { min-height: 44px; justify-content: center; }
+  .content { padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar h1 { min-width: 0; }
+  .conn-pill { padding: 4px 7px; font-size: 10px; }
+}
+@media (max-width: 360px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .stat { padding: 12px 10px; }
+}
