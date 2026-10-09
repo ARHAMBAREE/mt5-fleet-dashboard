@@ -62,9 +62,8 @@ export default function DashboardPage() {
       </div>
 
       <SummaryCards totals={totals} />
-      <GoldTargets targets={accounts.data?.goldTargets ?? []} error={accounts.error} loading={accounts.loading} />
-
       <AccountCards rows={accounts.data?.rows ?? []} onUpdated={accounts.refetch} />
+      <GoldTargets targets={accounts.data?.goldTargets ?? []} error={accounts.error} loading={accounts.loading} />
 
       <div className="grid cols-2">
         <div className="card">
