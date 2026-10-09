@@ -66,6 +66,8 @@ export const GROUP_SEEDS = [
 // ---------------------------------------------------------------------------
 
 export const accountSummarySchema = z.object({
+  displayName: z.string().nullable(),
+  favorite: z.boolean(),
   id: z.string(),
   login: z.string(),
   broker: z.string(),

@@ -47,7 +47,7 @@ export async function getAccountDetail(userId: string, accountId: string, range:
 
   return {
     account: {
-      id: account.id, login: account.login, broker: account.broker, server: account.server,
+      id: account.id, displayName: account.displayName, login: account.login, broker: account.broker, server: account.server,
       currency: unit.currency, sourceCurrency: account.currency, mode: account.mode, balance: account.balance * unit.factor, equity: account.equity * unit.factor,
       credit: account.credit * unit.factor, margin: account.margin * unit.factor, freeMargin: account.freeMargin * unit.factor,
       marginLevel: account.marginLevel, leverage: account.leverage, tradeAllowed: account.tradeAllowed,

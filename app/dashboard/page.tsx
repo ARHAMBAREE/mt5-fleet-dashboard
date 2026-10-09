@@ -4,7 +4,7 @@ import { useState } from "react";
 import GoldTargets from "@/components/dashboard/GoldTargets";
 import type { GoldTarget } from "@/shared/gold";
 import SummaryCards from "@/components/dashboard/SummaryCards";
-import AccountsTable from "@/components/accounts/AccountsTable";
+import AccountCards from "@/components/accounts/AccountCards";
 import { useResource } from "@/lib/client/useResource";
 import { useLiveRefresh } from "@/lib/realtime/hooks";
 import { apiGet } from "@/lib/client/api";
@@ -54,7 +54,7 @@ export default function DashboardPage() {
   return (
     <div className={totals.todayRealizedPl == null || totals.floatingPl == null ? "" : totals.todayRealizedPl > totals.floatingPl ? "pnl-above" : totals.todayRealizedPl < totals.floatingPl ? "pnl-below" : ""}>
       <div className="page-head">
-        <h2>Fleet Overview</h2>
+        <h2>Portfolio overview</h2>
         <span className="small muted">USD and USC accounts together · amounts shown as reported</span>
         <input aria-label="Currency filter" className="input" style={{maxWidth:170}} placeholder="Currency (e.g. USD)" value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} />
         <span className="spacer" />
@@ -64,17 +64,7 @@ export default function DashboardPage() {
       <SummaryCards totals={totals} />
       <GoldTargets targets={accounts.data?.goldTargets ?? []} error={accounts.error} loading={accounts.loading} />
 
-      <div className="card tight mb">
-        <div style={{ padding: "14px 16px 0" }}>
-          <div className="card-title">
-            Accounts
-            <span className="right muted small">Click a row for detail</span>
-          </div>
-        </div>
-        <div style={{ padding: "0 16px 16px" }}>
-          <AccountsTable rows={accounts.data?.rows ?? []} />
-        </div>
-      </div>
+      <AccountCards rows={accounts.data?.rows ?? []} onUpdated={accounts.refetch} />
 
       <div className="grid cols-2">
         <div className="card">

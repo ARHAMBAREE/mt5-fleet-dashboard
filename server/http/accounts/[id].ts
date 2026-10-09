@@ -1,4 +1,6 @@
-import { ApiError, withAuth } from "@/lib/auth/guard";
+import { z } from "zod";
+import { prisma } from "@/lib/database/prisma";
+import { ApiError, readJson, withAuth } from "@/lib/auth/guard";
 import { getAccountDetail, type SeriesRange } from "@/lib/queries/detail";
 
 export const dynamic = "force-dynamic";
@@ -18,3 +20,19 @@ export const GET = withAuth<{ id: string }>(
     return Response.json(detail);
   }
 );
+
+const editSchema = z.object({
+  displayName: z.string().trim().max(80).optional(),
+  favorite: z.boolean().optional(),
+}).strict().refine(v => v.displayName !== undefined || v.favorite !== undefined, "No changes provided");
+
+export const PATCH = withAuth<{ id: string }>({ minRole: "ADMIN", limit: {key: "account-edit", limit: 60, windowSec: 60} }, async (req, ctx) => {
+  const {id} = await ctx.params;
+  const body = await readJson(req, editSchema);
+  const result = await prisma.account.updateMany({where:{id,userId:ctx.user.id},data:{
+    ...(body.displayName !== undefined ? {displayName:body.displayName || null} : {}),
+    ...(body.favorite !== undefined ? {favorite:body.favorite} : {}),
+  }});
+  if (!result.count) throw new ApiError(404,"NOT_FOUND","Account not found");
+  return Response.json({ok:true});
+});

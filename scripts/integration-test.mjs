@@ -55,6 +55,12 @@ try {
   assert.equal((await api('/agent/positions',{method:'POST',bearer,body:{...identity,server:'Other',full:true,positions:[]}})).status,409);
   const accounts=ok(await api('/accounts',{cookie})); assert.equal(accounts.rows.length,1);
   const id=accounts.rows[0].id; assert.equal(accounts.rows[0].floatingPl,50);
+  ok(await api(`/accounts/${id}`,{method:'PATCH',cookie,body:{displayName:'  Test name  ',favorite:true}}));
+  assert.equal((await api(`/accounts/${id}`,{method:'PATCH',cookie,csrf:false,body:{displayName:'Blocked'}})).status,403);
+  assert.equal((await api(`/accounts/${id}`,{method:'PATCH',cookie,body:{displayName:'x'.repeat(81)}})).status,400);
+  ok(await api('/agent/snapshot',{method:'POST',bearer,body:{v:1,account}}));
+  const named=ok(await api('/accounts?q=Test%20name',{cookie})).rows;
+  assert.equal(named.length,1);assert.equal(named[0].displayName,'Test name');assert.equal(named[0].favorite,true);
   const gold=ok(await api('/accounts?includeGold=1',{cookie})); assert.equal(gold.goldTargets.length,1); assert.equal(gold.goldTargets[0].magic,position.magic); assert.equal(gold.goldTargets[0].currentPrice,2050);
   socket=new WebSocket('ws://localhost:13401/api/ws',{headers:{Cookie:cookie,Origin:env.APP_URL}});
   await Promise.race([once(socket,'open'),new Promise((_,reject)=>setTimeout(()=>reject(new Error('WS connect timeout')),5000))]);
@@ -86,6 +92,7 @@ try {
   assert.equal((await api('/analytics?range=bad',{cookie})).status,400);
   const second=await api('/auth/register',{method:'POST',body:{email:'other@example.invalid',password:'FleetTest!Only123',name:'Other test'}});ok(second);
   assert.equal((await api(`/accounts/${id}`,{cookie:second.cookie})).status,404);
+  assert.equal((await api(`/accounts/${id}`,{method:'PATCH',cookie:second.cookie,body:{displayName:'Not yours'}})).status,404);
   assert.equal(ok(await api('/accounts',{cookie:second.cookie})).rows.length,0);
   assert.equal(ok(await api('/accounts?includeGold=1',{cookie:second.cookie})).goldTargets.length,0);
   // Unlimited retention must preserve old snapshots, while 7d removes only snapshots.

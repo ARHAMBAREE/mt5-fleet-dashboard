@@ -3,7 +3,7 @@ export type DetailTab = "overview" | "equity" | "balance" | "drawdown" | "positi
 
 export interface AccountDetailPayload {
   account: {
-    id: string; login: string; broker: string; server: string; currency: string; sourceCurrency: string; mode: string;
+    id: string; displayName: string | null; login: string; broker: string; server: string; currency: string; sourceCurrency: string; mode: string;
     balance: number; equity: number; credit: number; margin: number; freeMargin: number;
     marginLevel: number; leverage: number; tradeAllowed: boolean; algoTrading: boolean;
     terminalConnected: boolean; lastHeartbeatAt: string | null; snapshotAt: string | null;

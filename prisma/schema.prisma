@@ -127,6 +127,8 @@ enum AccountMode {
 }
 
 model Account {
+  displayName       String?
+  favorite          Boolean @default(false)
   id                String      @id @default(uuid())
   userId            String
   agentId           String?

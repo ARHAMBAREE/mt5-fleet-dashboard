@@ -64,6 +64,7 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
       ...(filters.q
         ? {
             OR: [
+              { displayName: { contains: filters.q, mode: "insensitive" } },
               { login: { contains: filters.q, mode: "insensitive" } },
               { broker: { contains: filters.q, mode: "insensitive" } },
               { server: { contains: filters.q, mode: "insensitive" } },
@@ -97,6 +98,7 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
     const lastBeat = revoked || !a.agentId || !a.terminalConnected ? null : a.lastHeartbeatAt;
     return {
       id: a.id,
+      displayName: a.displayName, favorite: a.favorite,
       login: a.login,
       broker: a.broker,
       server: a.server,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import AccountsTable from "@/components/accounts/AccountsTable";
+import AccountCards from "@/components/accounts/AccountCards";
 import { useResource } from "@/lib/client/useResource";
 import { useLiveRefresh } from "@/lib/realtime/hooks";
 import { apiGet, apiDownload } from "@/lib/client/api";
@@ -76,7 +76,7 @@ export default function AccountsPage() {
 
       <div className="card tight">
         <div style={{ padding: "14px 16px" }}>
-          <AccountsTable rows={accounts.data?.rows ?? []} storageKey="fleet.accounts.page" />
+          <AccountCards rows={accounts.data?.rows ?? []} onUpdated={accounts.refetch} />
           {accounts.loading && !accounts.data && <div className="skeleton mt" style={{ height: 40 }} />}
         </div>
       </div>

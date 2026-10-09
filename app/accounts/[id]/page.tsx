@@ -79,7 +79,7 @@ export default function AccountDetailPage() {
     <div>
       <div className="page-head">
         <Link href="/accounts" className="btn sm">← Accounts</Link>
-        <h2 className="num">{d.account.login}</h2>
+        <h2 className="num">{d.account.displayName || d.account.login}</h2>
         <StatusBadge status={d.eaStatus.value} />
         <span className={`badge ${d.account.mode === "LIVE" ? "live" : "demo"}`}>{d.account.mode}</span>
         <span className="muted small hide-mobile">{d.account.broker} · {d.account.server}</span>
