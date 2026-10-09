@@ -1,6 +1,7 @@
 "use client";
 import {useState} from "react";
 import Link from "next/link";
+import {compareAccountIdentity} from "@/shared/account-order";
 import type {AccountSummary} from "@/shared/types";
 import {apiSend} from "@/lib/client/api";
 import {money, signedMoney} from "@/lib/format";
@@ -19,7 +20,7 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
     finally{setPending(null);}
   }
   const needle=search.trim().toLowerCase();
-  const visible=rows.filter(r=>[r.displayName,r.login,r.broker,r.server].some(s=>s?.toLowerCase().includes(needle)) && (!filter || (filter==="favorites"?r.favorite:r.eaStatus===filter))).sort((a,b)=>Number(b.favorite)-Number(a.favorite));
+  const visible=rows.filter(r=>[r.displayName,r.login,r.broker,r.server].some(s=>s?.toLowerCase().includes(needle)) && (!filter || (filter==="favorites"?r.favorite:r.eaStatus===filter))).sort((a,b)=>Number(b.favorite)-Number(a.favorite) || compareAccountIdentity(a,b));
   return <section className="portfolio-accounts" aria-label="Account portfolio">
     <div className="portfolio-filters">
       <input className="input" aria-label="Search accounts" placeholder="Search accounts, brokers, logins…" value={search} onChange={e=>setSearch(e.target.value)}/>

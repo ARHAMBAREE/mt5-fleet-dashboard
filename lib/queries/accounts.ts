@@ -1,4 +1,5 @@
 import "server-only";
+import { compareAccountIdentity } from "@/shared/account-order";
 import { todayRealized } from "@/lib/daily-pl";
 import { accountMoneyUnit } from "@/lib/currency";
 import { prisma } from "@/lib/database/prisma";
@@ -131,7 +132,7 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
   });
 
   const filtered = filters.status ? rows.filter((r) => r.eaStatus === filters.status) : rows;
-  sortRows(filtered, filters.sort ?? "status", filters.dir ?? "asc");
+  sortRows(filtered, filters.sort ?? "account", filters.dir ?? "asc");
 
   const currencies = [...new Set(rows.map(r => r.currency))];
   const mixed = currencies.length > 1;
@@ -158,8 +159,8 @@ const STATUS_ORDER: Record<string, number> = { ONLINE: 0, WARNING: 1, OFFLINE: 2
 export function sortRows(rows: AccountSummary[], sort: string, dir: "asc" | "desc"): void {
   const mul = dir === "asc" ? 1 : -1;
   rows.sort((a, b) => {
-    if (sort === "status") return mul * (STATUS_ORDER[a.eaStatus] - STATUS_ORDER[b.eaStatus]);
-    if (sort === "account") return mul * (Number(a.login) - Number(b.login) || a.login.localeCompare(b.login));
+    if (sort === "status") return mul * (STATUS_ORDER[a.eaStatus] - STATUS_ORDER[b.eaStatus]) || compareAccountIdentity(a,b);
+    if (sort === "account") return mul * compareAccountIdentity(a,b);
     if (sort === "lastSeen") {
       const av = a.lastHeartbeatAt ? Date.parse(a.lastHeartbeatAt) : 0;
       const bv = b.lastHeartbeatAt ? Date.parse(b.lastHeartbeatAt) : 0;
