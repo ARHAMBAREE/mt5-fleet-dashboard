@@ -49,3 +49,9 @@ export function groupGoldGrids(positions: GoldTarget[]): GoldGrid[] {
     };
   });
 }
+
+/** Latest valid terminal quote; no synthetic price when telemetry is unavailable. */
+export function latestGoldQuote(positions: GoldTarget[]): GoldTarget | null {
+  return positions.filter(p => goldQuote(p.symbol) === "USD" && Number.isFinite(p.currentPrice) && p.currentPrice > 0 && Number.isFinite(Date.parse(p.updatedAt)))
+    .sort((a,b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt) || a.id.localeCompare(b.id))[0] ?? null;
+}

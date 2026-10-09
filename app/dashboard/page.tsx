@@ -61,7 +61,7 @@ export default function DashboardPage() {
         {accounts.loading && <span className="spinner" />}
       </div>
 
-      <SummaryCards totals={totals} />
+      <SummaryCards totals={totals} goldTargets={accounts.data?.goldTargets ?? []} />
       <AccountCards rows={accounts.data?.rows ?? []} onUpdated={accounts.refetch} />
       <GoldTargets targets={accounts.data?.goldTargets ?? []} error={accounts.error} loading={accounts.loading} />
 

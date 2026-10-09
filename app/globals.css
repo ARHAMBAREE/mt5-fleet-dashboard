@@ -415,3 +415,16 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent-2); outl
   .bottomnav .alert-count { right: calc(50% - 21px); top: 2px; }
   .dashboard-heading { display: none; }
 }
+
+/* Full-card profit/loss colors remain distinct from the fleet's panel tint. */
+.stat.pnl-profit { background: #0c593f; border-color: #249e72; }
+.stat.pnl-loss { background: #812d39; border-color: #d05262; }
+.stat.pnl-profit .label, .stat.pnl-profit .value,
+.stat.pnl-loss .label, .stat.pnl-loss .value { color: #fff; }
+.stat.pnl-profit .sub { color: #c1ebda; }
+.stat.pnl-loss .sub { color: #ffd4d9; }
+.stat.gold-price { background: #352d1b; border-color: #796335; }
+.stat.gold-price .value { color: #ffdf86; }
+@media (max-width: 960px) {
+  .stats { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
