@@ -6,6 +6,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRealtimeEvents, useRealtimeStatus } from "@/lib/realtime/hooks";
 import { apiGet, apiSend, ApiClientError } from "@/lib/client/api";
 
+function ThemeIcon({kind}:{kind:string}) {
+  const paths: Record<string,React.ReactNode> = {
+    dashboard: <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h7v7h-7z"/></>,
+    accounts: <><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M3 13h5l2 3h4l2-3h5"/></>,
+    alerts: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></>,
+    positions: <path d="m2 13 5 0 3-10 4 18 3-8h5"/>,
+    lock: <><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4M12 15v2"/></>,
+    more: <><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></>
+  };
+  return <svg className="theme-icon" viewBox="0 0 24 24" aria-hidden="true">{paths[kind] ?? <path d="M4 6h16M4 12h16M4 18h16"/>}</svg>;
+}
+
 export const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "▦" },
   { href: "/accounts", label: "Accounts", icon: "▤" },
@@ -143,7 +155,7 @@ export default function ShellWrapper({ children }: { children: React.ReactNode }
               href={item.href}
               className={`nav-item ${pathname === item.href || pathname.startsWith(`${item.href}/`) ? "active" : ""}`}
             >
-              <span className="icon">{item.icon}</span>
+              <ThemeIcon kind={item.href.slice(1)}/>
               {item.label}
               {item.href === "/alerts" && unack > 0 && <span className="nav-badge">{unack}</span>}
             </Link>
@@ -151,7 +163,7 @@ export default function ShellWrapper({ children }: { children: React.ReactNode }
           <span className="nav-label">System</span>
           {NAV_ITEMS.slice(7).map((item) => (
             <Link key={item.href} href={item.href} className={`nav-item ${pathname.startsWith(item.href) ? "active" : ""}`}>
-              <span className="icon">{item.icon}</span>
+              <ThemeIcon kind={item.href.slice(1)}/>
               {item.label}
             </Link>
           ))}
@@ -166,7 +178,7 @@ export default function ShellWrapper({ children }: { children: React.ReactNode }
 
       <div className="main">
         <header className="topbar">
-          <h1>{titleFor(pathname)}</h1>
+          <div className="topbar-title"><div className="topbar-eyebrow">MT5 MONITOR</div><h1>{pathname === "/dashboard" ? "Portfolio overview" : titleFor(pathname)}</h1></div>
           <span className="spacer" />
           <button className="btn sm ghost hide-mobile" onClick={enableNotifications} title="Enable browser/desktop notifications">
             🔔
@@ -174,9 +186,10 @@ export default function ShellWrapper({ children }: { children: React.ReactNode }
           <span className={`conn-pill ${connClass}`} title="Realtime transport status">
             <span className="conn-dot" /> {connLabel}
           </span>
-          <Link href="/alerts" className="btn sm" title="Unacknowledged alerts">
-            ⚠ {unack}
+          <Link href="/alerts" className="header-action" aria-label={`Alerts, ${unack} unread`}>
+            <ThemeIcon kind="alerts"/>{unack > 0 && <span className="alert-count">{unack}</span>}
           </Link>
+          <button className="header-action" onClick={logout} aria-label="Lock dashboard and sign out" title="Sign out"><ThemeIcon kind="lock"/></button>
         </header>
         <main className="content">{children}</main>
       </div>
@@ -186,9 +199,9 @@ export default function ShellWrapper({ children }: { children: React.ReactNode }
           ["/dashboard", "/accounts", "/positions", "/alerts"].includes(i.href)
         ).map((item) => (
           <Link key={item.href} href={item.href} className={pathname.startsWith(item.href) ? "active" : ""}>
-            <span className="bicon">{item.icon}</span>
-            {item.label}
-            {item.href === "/alerts" && unack > 0 && <span className="dot" />}
+            <span className="bicon"><ThemeIcon kind={item.href.slice(1)}/></span>
+            {item.href === "/dashboard" ? "Home" : item.label}
+            {item.href === "/alerts" && unack > 0 && <span className="alert-count">{unack}</span>}
           </Link>
         ))}
         <a
@@ -199,7 +212,7 @@ export default function ShellWrapper({ children }: { children: React.ReactNode }
             setMoreOpen(true);
           }}
         >
-          <span className="bicon">•••</span>
+          <span className="bicon"><ThemeIcon kind="more"/></span>
           More
         </a>
       </nav>

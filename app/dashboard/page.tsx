@@ -54,7 +54,7 @@ export default function DashboardPage() {
   return (
     <div className={totals.todayRealizedPl == null || totals.floatingPl == null ? "" : totals.todayRealizedPl > totals.floatingPl ? "pnl-above" : totals.todayRealizedPl < totals.floatingPl ? "pnl-below" : ""}>
       <div className="page-head">
-        <h2>Portfolio overview</h2>
+        <h2 className="dashboard-heading">Portfolio overview</h2>
         <span className="small muted">USD and USC accounts together · amounts shown as reported</span>
         <input aria-label="Currency filter" className="input" style={{maxWidth:170}} placeholder="Currency (e.g. USD)" value={currency} onChange={e => setCurrency(e.target.value.toUpperCase())} />
         <span className="spacer" />
