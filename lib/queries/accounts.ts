@@ -1,4 +1,5 @@
 import "server-only";
+import { monthlyValue, readMonthlyPl } from "@/lib/monthly-pl";
 import { compareAccountIdentity } from "@/shared/account-order";
 import { todayRealized } from "@/lib/daily-pl";
 import { accountMoneyUnit } from "@/lib/currency";
@@ -39,6 +40,9 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
     floatingPl: number | null;
     todayRealizedPl: number | null;
     realizedReportingAccounts: number;
+    monthlyRealizedPl: number | null;
+    monthlyReportingAccounts: number;
+    monthlyTrackingSince: string | null;
     totalDrawdownPct: number;
     openPositions: number;
   };
@@ -47,7 +51,7 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
     currencies: [] as string[],
     totalAccounts: 0, online: 0, warning: 0, offline: 0,
     totalBalance: 0, totalEquity: 0, floatingPl: 0, todayRealizedPl: 0, realizedReportingAccounts: 0,
-    totalDrawdownPct: 0, openPositions: 0,
+    totalDrawdownPct: 0, openPositions: 0, monthlyRealizedPl: 0, monthlyReportingAccounts: 0, monthlyTrackingSince: null,
   };
 
   const now = new Date();
@@ -136,7 +140,12 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
 
   const currencies = [...new Set(rows.map(r => r.currency))];
   const mixed = currencies.length > 1;
+  const monthly = accounts.map(a => ({ value: monthlyValue(a.monthlyPl, now), factor: accountMoneyUnit(a.currency).factor, state: readMonthlyPl(a.monthlyPl) }));
+  const starts = monthly.flatMap(m => m.state ? [m.state.startedAt] : []).sort();
   const totals = {
+    monthlyRealizedPl: mixed || monthly.some(m => m.value === null) ? null : monthly.reduce((sum, m) => sum + m.value! * m.factor, 0),
+    monthlyReportingAccounts: monthly.filter(m => m.value !== null).length,
+    monthlyTrackingSince: starts.at(-1) ?? null,
     currencies,
     todayRealizedPl: mixed || rows.some(r => r.todayRealizedPl === null) ? null : rows.reduce((s, r) => s + r.todayRealizedPl!, 0),
     realizedReportingAccounts: rows.filter(r => r.todayRealizedPl !== null).length,

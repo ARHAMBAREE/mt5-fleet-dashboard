@@ -143,6 +143,7 @@ model Account {
 
   todayRealizedPl   Float?
   realizedPlDay     String?
+  monthlyPl         Json?
 
   // Latest authoritative state (updated on every agent snapshot)
   balance           Float       @default(0)

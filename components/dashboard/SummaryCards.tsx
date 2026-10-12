@@ -14,6 +14,9 @@ interface Totals {
   floatingPl: number | null;
   todayRealizedPl?: number | null;
   realizedReportingAccounts?: number;
+  monthlyRealizedPl?: number | null;
+  monthlyReportingAccounts?: number;
+  monthlyTrackingSince?: string | null;
   totalDrawdownPct: number;
   openPositions: number;
 }
@@ -24,6 +27,9 @@ export default function SummaryCards({ totals, currency = "", goldTargets = [] }
   const cash = (value: number | null, signed = false) => value === null ? "Select currency" : (signed ? signedMoney : money)(value, currency);
   const quote = latestGoldQuote(goldTargets);
   const quoteStale = quote && (!quote.online || Date.now() - Date.parse(quote.updatedAt) > 60_000);
+  const month = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Karachi', year: 'numeric', month: '2-digit' });
+  const partialMonth = totals.monthlyTrackingSince && month.format(new Date(totals.monthlyTrackingSince)) === month.format(new Date());
+  const monthlyPeriod = partialMonth ? `Tracking since ${new Date(totals.monthlyTrackingSince!).toLocaleDateString('en-GB', { timeZone: 'Asia/Karachi', day: 'numeric', month: 'short' })}` : 'Since the 1st';
   const cards = [
     { label: "Total Accounts", value: String(totals.totalAccounts), cls: "accent" },
     { label: "Online", value: String(totals.online), cls: "good", sub: `${totals.warning} warning` },
@@ -33,7 +39,7 @@ export default function SummaryCards({ totals, currency = "", goldTargets = [] }
     { label: "Total P/L · Today", value: totals.todayRealizedPl == null ? "Awaiting data" : cash(totals.todayRealizedPl, true), cls: "pnl-profit", sub: `Realized · Pakistan time · ${totals.realizedReportingAccounts ?? 0}/${totals.totalAccounts} reporting` },
     { label: "Floating P/L", value: cash(totals.floatingPl, true), cls: totals.floatingPl == null || totals.floatingPl === 0 ? "" : totals.floatingPl > 0 ? "pnl-profit" : "pnl-loss" },
     { label: "Highest Drawdown", value: `${totals.totalDrawdownPct.toFixed(2)}%`, cls: totals.totalDrawdownPct > 10 ? "bad" : "" },
-    { label: "Open Positions", value: String(totals.openPositions), cls: "accent" },
+    { label: "Total P/L · Month", value: totals.monthlyRealizedPl == null ? "Awaiting data" : cash(totals.monthlyRealizedPl, true), cls: (totals.monthlyRealizedPl ?? 0) < 0 ? "pnl-loss" : "pnl-profit", sub: `${monthlyPeriod} · observed realized · Pakistan time · ${totals.monthlyReportingAccounts ?? 0}/${totals.totalAccounts} reporting` },
     { label: "Gold Price", value: quote ? money(quote.currentPrice, "USD") : "Awaiting quote", cls: "gold-price", sub: quote ? `${quote.symbol} · ${quoteStale ? "Stale · " : ""}${lastSeenLabel(quote.updatedAt)}` : "From MT5 gold positions" },
   ];
 

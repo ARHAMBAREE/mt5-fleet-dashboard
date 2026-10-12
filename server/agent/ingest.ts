@@ -1,4 +1,5 @@
 import "server-only";
+import { observeMonthlyPl } from "@/lib/monthly-pl";
 import { randomUUID } from "node:crypto";
 import { ApiError } from "@/lib/auth/guard";
 import { prisma } from "@/lib/database/prisma";
@@ -43,12 +44,14 @@ export async function ingestSnapshot(agent: { id: string; userId: string }, acc:
   const updated = await prisma.$transaction(async (prisma) => {
   await prisma.$queryRaw`SELECT id FROM accounts WHERE id = ${account.id} FOR UPDATE`;
   const previous = await prisma.account.findUniqueOrThrow({ where: { id: account.id } });
+  const monthlyPl = observeMonthlyPl(previous.monthlyPl, acc.todayRealizedPl, acc.realizedPlDay, now);
   const equityPeak = Math.max(previous.equityPeak, acc.equity);
   const maxDrawdownPct = Math.max(previous.maxDrawdownPct, equityPeak > 0 ? (equityPeak - acc.equity) / equityPeak * 100 : 0);
   const updated = await prisma.account.update({
     where: { id: account.id },
     data: {
       equityPeak, maxDrawdownPct,
+      ...(monthlyPl ? { monthlyPl: { ...monthlyPl } } : {}),
       todayRealizedPl: acc.todayRealizedPl ?? null,
       realizedPlDay: acc.realizedPlDay ?? null,
       agentId: agent.id,
