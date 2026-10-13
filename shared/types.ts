@@ -90,6 +90,7 @@ export const accountSummarySchema = z.object({
   lastSeenLabel: z.string(),
   floatingPl: z.number(),
   todayRealizedPl: z.number().nullable(),
+  monthlyRealizedPl: z.number().nullable().optional(),
   drawdownPct: z.number(),
   maxDrawdownPct: z.number(),
   openPositions: z.number(),

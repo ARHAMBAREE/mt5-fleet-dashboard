@@ -125,6 +125,7 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
       lastSeenLabel: "",
       floatingPl,
       todayRealizedPl: todayRealized(a.todayRealizedPl, a.realizedPlDay, now) === null ? null : a.todayRealizedPl! * unit.factor,
+      monthlyRealizedPl: monthlyValue(a.monthlyPl, now) === null ? null : monthlyValue(a.monthlyPl, now)! * unit.factor,
       drawdownPct: currentDd,
       maxDrawdownPct: dd?.maxDdPct ?? 0,
       openPositions: openMap.get(a.id) ?? 0,

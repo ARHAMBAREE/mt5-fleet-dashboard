@@ -6,7 +6,8 @@ export interface AccountDetailPayload {
     id: string; displayName: string | null; login: string; broker: string; server: string; currency: string; sourceCurrency: string; mode: string;
     balance: number; equity: number; credit: number; margin: number; freeMargin: number;
     marginLevel: number; leverage: number; tradeAllowed: boolean; algoTrading: boolean;
-    terminalConnected: boolean; lastHeartbeatAt: string | null; snapshotAt: string | null;
+    terminalConnected: boolean; todayRealizedPl?: number | null; monthlyRealizedPl?: number | null;
+    lastHeartbeatAt: string | null; snapshotAt: string | null;
     groups: { id: string; name: string; color: string }[];
     agent: { id: string; name: string; status: string; platform: string | null } | null;
   };

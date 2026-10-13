@@ -2,6 +2,8 @@ import "server-only";
 import { accountMoneyUnit } from "@/lib/currency";
 import { prisma } from "@/lib/database/prisma";
 import { deriveEaStatus } from "@/lib/status";
+import { todayRealized } from "@/lib/daily-pl";
+import { monthlyValue } from "@/lib/monthly-pl";
 import { aggregatePositions } from "@/lib/calculations/risk";
 import type { EquityPoint } from "@/lib/calculations/risk";
 
@@ -52,6 +54,8 @@ export async function getAccountDetail(userId: string, accountId: string, range:
       credit: account.credit * unit.factor, margin: account.margin * unit.factor, freeMargin: account.freeMargin * unit.factor,
       marginLevel: account.marginLevel, leverage: account.leverage, tradeAllowed: account.tradeAllowed,
       algoTrading: account.algoTrading, terminalConnected: account.terminalConnected,
+      todayRealizedPl: todayRealized(account.todayRealizedPl, account.realizedPlDay, now) === null ? null : account.todayRealizedPl! * unit.factor,
+      monthlyRealizedPl: monthlyValue(account.monthlyPl, now) === null ? null : monthlyValue(account.monthlyPl, now)! * unit.factor,
       lastHeartbeatAt: lastBeat?.toISOString() ?? null,
       snapshotAt: account.snapshotAt?.toISOString() ?? null,
       updatedAt: account.updatedAt.toISOString(),

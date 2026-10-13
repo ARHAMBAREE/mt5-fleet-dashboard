@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useResource } from "@/lib/client/useResource";
 import { useLiveRefresh } from "@/lib/realtime/hooks";
-import { apiGet, apiDownload } from "@/lib/client/api";
+import { apiGet, apiDownload, apiSend } from "@/lib/client/api";
 import LineChart from "@/components/charts/LineChart";
 import StatusBadge from "@/components/ui/StatusBadge";
 import DataTable, { type Column } from "@/components/tables/DataTable";
@@ -24,14 +24,29 @@ const TABS: { id: DetailTab; label: string }[] = [
 ];
 
 export default function AccountDetailPage() {
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [range, setRange] = useState<DetailRange>("30d");
   const [tab, setTab] = useState<DetailTab>("overview");
+  const [deleting, setDeleting] = useState(false);
 
   const detail = useResource<AccountDetailPayload>(() => apiGet(`/api/accounts/${id}`, { range }), [id, range]);
   const d = detail.data;
   useLiveRefresh(() => detail.refetch());
+
+  async function deleteAccount() {
+    const title = d?.account.displayName || d?.account.login || "this account";
+    if (!confirm(`Are you sure you want to delete account "${title}"? All snapshots, positions, orders, and historical data will be permanently removed.`)) return;
+    setDeleting(true);
+    try {
+      await apiSend("DELETE", `/api/accounts/${id}`);
+      router.push("/accounts");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete account");
+      setDeleting(false);
+    }
+  }
 
   const moneyFmt = (v: number) => money(v, d?.account.currency ?? "");
   const kv = (k: string, v: React.ReactNode) => (
@@ -92,6 +107,7 @@ export default function AccountDetailPage() {
           <option value="1y">1 year</option>
         </select>
         <button className="btn sm" onClick={() => apiDownload("/api/export", { type: "positions", format: "csv", accountId: id })}>⬇ Positions</button>
+        <button className="btn danger sm" disabled={deleting} onClick={deleteAccount}>{deleting ? "Deleting…" : "Delete Account"}</button>
       </div>
 
       <div className="stats">
@@ -130,6 +146,8 @@ export default function AccountDetailPage() {
             <div className="card-title">Funds &amp; Margin</div>
             {kv("Balance", moneyFmt(d.account.balance))}
             {kv("Equity", moneyFmt(d.account.equity))}
+            {kv("Today realized", d.account.todayRealizedPl == null ? "Awaiting data" : signedMoney(d.account.todayRealizedPl, d.account.currency))}
+            {kv("Month realized", d.account.monthlyRealizedPl == null ? "Awaiting data" : signedMoney(d.account.monthlyRealizedPl, d.account.currency))}
             {kv("Margin", moneyFmt(d.account.margin))}
             {kv("Free margin", moneyFmt(d.account.freeMargin))}
             {kv("Margin level", d.account.marginLevel > 0 ? pct(d.account.marginLevel, 0) : "—")}

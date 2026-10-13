@@ -29,6 +29,8 @@ export const heartbeatSchema = z.object({
 export const accountInfoSchema = z.object({
   todayRealizedPl: finite().optional(),
   realizedPlDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  monthlyRealizedPl: finite().optional(),
+  monthlyPlMonth: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/).optional(),
   login: z.string().min(1).max(64),
   broker: z.string().max(120),
   server: z.string().max(120),

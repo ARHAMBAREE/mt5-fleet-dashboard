@@ -3,6 +3,8 @@ import { prisma } from "@/lib/database/prisma";
 import { ApiError, readJson, withAuth } from "@/lib/auth/guard";
 import { getAccountDetail, type SeriesRange } from "@/lib/queries/detail";
 
+import { publishEvent } from "@/lib/realtime/publish";
+
 export const dynamic = "force-dynamic";
 
 const RANGES = new Set(["24h", "7d", "30d", "90d", "1y"]);
@@ -36,3 +38,17 @@ export const PATCH = withAuth<{ id: string }>({ minRole: "ADMIN", limit: {key: "
   if (!result.count) throw new ApiError(404,"NOT_FOUND","Account not found");
   return Response.json({ok:true});
 });
+
+export const DELETE = withAuth<{ id: string }>(
+  { minRole: "ADMIN", limit: { key: "account-delete", limit: 60, windowSec: 60 } },
+  async (_req, ctx) => {
+    const { id } = await ctx.params;
+    const account = await prisma.account.findFirst({ where: { id, userId: ctx.user.id } });
+    if (!account) throw new ApiError(404, "NOT_FOUND", "Account not found");
+
+    await prisma.account.delete({ where: { id } });
+    await publishEvent(ctx.user.id, "accounts:update", { accountIds: [id], deleted: true });
+    return Response.json({ ok: true });
+  }
+);
+

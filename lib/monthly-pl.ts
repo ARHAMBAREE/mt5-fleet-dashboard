@@ -23,6 +23,29 @@ export function observeMonthlyPl(previous: unknown, daily: number | undefined, d
   const total = month !== old.month ? daily : old.total + (day === old.day ? daily - old.daily : daily);
   return { ...old, month, day, daily, total };
 }
+/** Record monthly P&L: directly from EA if provided, or observe daily cumulative profit baseline. */
+export function recordMonthlyPl(
+  previous: unknown,
+  monthly: number | undefined,
+  month: string | undefined,
+  daily: number | undefined,
+  day: string | undefined,
+  now = new Date()
+): MonthlyPl | null {
+  const old = readMonthlyPl(previous);
+  if (monthly !== undefined && Number.isFinite(monthly)) {
+    const currentMonth = (month ?? day ?? reportingDay(now)).slice(0, 7);
+    const currentDay = day ?? reportingDay(now);
+    return {
+      startedAt: old?.startedAt ?? now.toISOString(),
+      month: currentMonth,
+      day: currentDay,
+      daily: daily !== undefined && Number.isFinite(daily) ? daily : (old?.daily ?? 0),
+      total: monthly,
+    };
+  }
+  return observeMonthlyPl(previous, daily, day, now);
+}
 export function monthlyValue(value: unknown, now = new Date()): number | null {
   const state = readMonthlyPl(value);
   return state ? state.month === reportingDay(now).slice(0, 7) ? state.total : 0 : null;

@@ -40,3 +40,34 @@ test("CSV neutralizes formulas without changing numeric losses", () => {
   assert.equal(csvCell(-3), "-3");
   assert.equal(csvCell("a,b"), '"a,b"');
 });
+test("accountInfoSchema validates snapshot with optional monthly profit fields", () => {
+  const { accountInfoSchema } = require("../lib/validation/agent-schemas");
+  const payload = {
+    login: "1001",
+    broker: "MetaQuotes",
+    server: "Demo-Server",
+    currency: "USD",
+    balance: 5000,
+    equity: 5200,
+    credit: 0,
+    margin: 100,
+    freeMargin: 5100,
+    marginLevel: 5200,
+    leverage: 100,
+    mode: "DEMO",
+    tradeAllowed: true,
+    algoTrading: true,
+    terminalConnected: true,
+    todayRealizedPl: 120.5,
+    realizedPlDay: "2026-10-13",
+    monthlyRealizedPl: 850.75,
+    monthlyPlMonth: "2026-10",
+  };
+  const parsed = accountInfoSchema.safeParse(payload);
+  assert.equal(parsed.success, true);
+  if (parsed.success) {
+    assert.equal(parsed.data.monthlyRealizedPl, 850.75);
+    assert.equal(parsed.data.monthlyPlMonth, "2026-10");
+  }
+});
+

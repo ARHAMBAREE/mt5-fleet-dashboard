@@ -1,1 +1,1 @@
-export { GET, PATCH } from "@/server/http/accounts/[id]";
+export { GET, PATCH, DELETE } from "@/server/http/accounts/[id]";

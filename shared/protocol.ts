@@ -65,6 +65,8 @@ export interface AgentHeartbeatResponse {
 export interface AgentAccountInfo {
   todayRealizedPl?: number;
   realizedPlDay?: string; // YYYY-MM-DD, Pakistan time (UTC+5)
+  monthlyRealizedPl?: number;
+  monthlyPlMonth?: string; // YYYY-MM, Pakistan time (UTC+5)
   login: string;
   broker: string;
   server: string;
