@@ -5,13 +5,13 @@
   "description": "MT5 Fleet Dashboard \u2014 production multi-account MT5 monitoring platform (web + desktop + telemetry agent on one backend).",
   "license": "UNLICENSED",
   "engines": {
-    "node": "24.x"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "dev": "next dev -p 3000",
     "dev:ws": "node --env-file=.env --conditions=react-server --import tsx server/websocket/standalone.ts",
     "dev:full": "concurrently -k -n web,ws \"npm run dev\" \"npm run dev:ws\"",
-    "build": "prisma generate && node scripts/copy-agent.cjs && next build",
+    "build": "prisma generate && node scripts/copy-agent.cjs && next build && node scripts/prepare-standalone.cjs",
     "start": "next start -p 3000",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",

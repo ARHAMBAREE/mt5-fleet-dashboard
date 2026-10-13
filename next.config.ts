@@ -9,6 +9,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
   // Prisma's query engine is a native binary: keep it external to the server bundle.
   serverExternalPackages: ["@prisma/client", "prisma", "bcryptjs", "ws", "pg"],

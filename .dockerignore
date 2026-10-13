@@ -1,0 +1,13 @@
+.git
+.github
+.next
+.next-dev
+.local
+.vercel
+node_modules
+dist-electron
+release
+tests
+docs
+*.log
+.DS_Store
