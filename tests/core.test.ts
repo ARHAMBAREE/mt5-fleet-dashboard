@@ -7,9 +7,9 @@ import { csvCell } from "../lib/validation/schemas";
 
 test("heartbeat boundaries and invalid dates", () => {
   const now = Date.UTC(2026, 9, 8);
-  assert.equal(deriveEaStatus(new Date(now - 9999), now), "ONLINE");
-  assert.equal(deriveEaStatus(new Date(now - 10000), now), "WARNING");
-  assert.equal(deriveEaStatus(new Date(now - 30000), now), "OFFLINE");
+  assert.equal(deriveEaStatus(new Date(now - 24999), now), "ONLINE");
+  assert.equal(deriveEaStatus(new Date(now - 25000), now), "WARNING");
+  assert.equal(deriveEaStatus(new Date(now - 60000), now), "OFFLINE");
   assert.equal(deriveEaStatus("invalid", now), "OFFLINE");
 });
 test("drawdown tracks recovery separately from maximum loss", () => {

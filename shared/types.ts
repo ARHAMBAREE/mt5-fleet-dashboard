@@ -3,9 +3,9 @@ import { z } from "zod";
 export const APP_NAME = "MT5 Fleet Dashboard";
 
 /** Connection status derived from heartbeat age (ms) at read time. */
-export const ONLINE_WINDOW_MS = 10_000; // < 10s  → ONLINE
-export const WARNING_WINDOW_MS = 30_000; // < 30s  → WARNING (after ONLINE)
-// >= 30s → OFFLINE (account is never deleted; recovers to ONLINE on resume)
+export const ONLINE_WINDOW_MS = 25_000; // < 25s  → ONLINE
+export const WARNING_WINDOW_MS = 60_000; // < 60s  → WARNING (after ONLINE)
+// >= 60s → OFFLINE (account is never deleted; recovers to ONLINE on resume)
 
 export const DEFAULT_HEARTBEAT_SECONDS = 5;
 export const DEFAULT_SNAPSHOT_SECONDS = 5;

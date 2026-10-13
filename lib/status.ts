@@ -4,9 +4,9 @@ import { ONLINE_WINDOW_MS, WARNING_WINDOW_MS, type EaStatusValue } from "@/share
  * Derive connection status from heartbeat age at read time — never stored
  * as stale state, so recovery is instant and accounts are never deleted.
  *
- *   age < 10s            → ONLINE
- *   age < 30s            → WARNING
- *   age ≥ 30s or no beat → OFFLINE
+ *   age < 25s            → ONLINE
+ *   age < 60s            → WARNING
+ *   age ≥ 60s or no beat → OFFLINE
  */
 export function deriveEaStatus(lastHeartbeatAt: Date | string | null | undefined, now = Date.now()): EaStatusValue {
   if (!lastHeartbeatAt) return "OFFLINE";
