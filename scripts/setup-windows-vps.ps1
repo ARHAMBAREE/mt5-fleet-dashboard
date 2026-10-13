@@ -32,7 +32,7 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
 $installDir = "C:\mt5-fleet-dashboard"
 if (-not (Test-Path $installDir)) {
     Write-Host "[3/5] Downloading MT5 Fleet Dashboard into $installDir..." -ForegroundColor Yellow
-    git clone https://x-access-token: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@github.com/ARHAMBAREE/mt5-fleet-dashboard.git $installDir
+    git clone https://github.com/ARHAMBAREE/mt5-fleet-dashboard.git $installDir
 } else {
     Write-Host "[3/5] Updating repository in $installDir..." -ForegroundColor Yellow
     Set-Location $installDir
