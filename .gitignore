@@ -42,3 +42,4 @@ public/downloads/
 .next-dev/
 *.ex5
 .env*
+.neon

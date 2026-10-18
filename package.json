@@ -2,7 +2,7 @@
   "name": "mt5-fleet-dashboard",
   "version": "1.0.0",
   "private": true,
-  "description": "MT5 Fleet Dashboard \u2014 production multi-account MT5 monitoring platform (web + desktop + telemetry agent on one backend).",
+  "description": "MT5 Fleet Dashboard — production multi-account MT5 monitoring platform (web + desktop + telemetry agent on one backend).",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20.0.0"
@@ -37,9 +37,12 @@
     "predev": "node scripts/copy-agent.cjs"
   },
   "dependencies": {
+    "@neon/config": "^1.9.2",
+    "@neon/env": "^1.6.3",
     "@prisma/client": "^6.16.2",
     "@vercel/functions": "^3.9.11",
     "bcryptjs": "^3.0.2",
+    "electron-updater": "^6.8.9",
     "jose": "^6.1.0",
     "next": "^15.5.4",
     "pg": "^8.16.3",
@@ -47,8 +50,7 @@
     "react-dom": "^19.2.0",
     "server-only": "^0.0.1",
     "ws": "^8.19.0",
-    "zod": "^4.1.12",
-    "electron-updater": "^6.8.9"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
