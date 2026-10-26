@@ -23,7 +23,9 @@ export async function publishEvent(
   // Best-effort cross-instance wake-up hint (payload is only an id, never data).
   // Harmless when no listener exists (e.g. plain Vercel functions).
   try {
-    await prisma.$executeRaw`SELECT pg_notify('mt5fleet', ${`${userId}:${ev.id.toString()}`})`;
+    if (process.env.DATABASE_URL?.startsWith("postgres")) {
+      await prisma.$executeRaw`SELECT pg_notify('mt5fleet', ${`${userId}:${ev.id.toString()}`})`;
+    }
   } catch {
     /* NOTIFY unavailable — consumers still converge via polling */
   }

@@ -199,3 +199,4 @@ echo "    2. Generate new pairing codes for your MT5 terminals"
 echo "       (the terminals themselves don't need any file changes)"
 echo ""
 echo "============================================================"
+

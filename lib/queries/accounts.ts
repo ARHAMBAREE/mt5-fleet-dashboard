@@ -69,10 +69,10 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
       ...(filters.q
         ? {
             OR: [
-              { displayName: { contains: filters.q, mode: "insensitive" } },
-              { login: { contains: filters.q, mode: "insensitive" } },
-              { broker: { contains: filters.q, mode: "insensitive" } },
-              { server: { contains: filters.q, mode: "insensitive" } },
+              { displayName: { contains: filters.q } },
+              { login: { contains: filters.q } },
+              { broker: { contains: filters.q } },
+              { server: { contains: filters.q } },
             ],
           }
         : {}),

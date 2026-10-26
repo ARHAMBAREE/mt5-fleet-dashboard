@@ -25,7 +25,7 @@ export const GET = withAuth({ limit: { key: "orders", limit: 240, windowSec: 60 
     ...(symbol ? { symbol } : {}),
     ...(type ? { type } : {}),
     ...(q
-      ? { OR: [{ symbol: { contains: q, mode: "insensitive" as const } }, { comment: { contains: q, mode: "insensitive" as const } }] }
+      ? { OR: [{ symbol: { contains: q } }, { comment: { contains: q } }] }
       : {}),
   };
 

@@ -86,13 +86,17 @@ export async function ingestSnapshot(agent: { id: string; userId: string }, acc:
       },
     }),
     // Equity samples throttled to 1/minute per account to bound storage.
-    prisma.$executeRaw`
-      INSERT INTO equity_snapshots (id, "accountId", at, equity, balance)
-      SELECT ${randomUUID()}, ${account.id}, ${now}, ${acc.equity}, ${acc.balance}
-      WHERE NOT EXISTS (
-        SELECT 1 FROM equity_snapshots e
-        WHERE e."accountId" = ${account.id} AND e.at > ${new Date(now.getTime() - 60_000)}
-      )`,
+    (async () => {
+      const recent = await prisma.equitySnapshot.findFirst({
+        where: { accountId: account.id, at: { gt: new Date(now.getTime() - 60_000) } },
+        select: { id: true },
+      });
+      if (!recent) {
+        await prisma.equitySnapshot.create({
+          data: { accountId: account.id, at: now, equity: acc.equity, balance: acc.balance },
+        });
+      }
+    })(),
     prisma.eaStatus.upsert({
       where: { accountId: account.id },
       create: {

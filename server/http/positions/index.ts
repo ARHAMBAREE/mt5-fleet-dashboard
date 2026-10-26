@@ -25,7 +25,7 @@ export const GET = withAuth({ limit: { key: "positions", limit: 240, windowSec: 
     ...(symbol ? { symbol } : {}),
     ...(type === "BUY" || type === "SELL" ? { type } : {}),
     ...(q
-      ? { OR: [{ symbol: { contains: q, mode: "insensitive" as const } }, { comment: { contains: q, mode: "insensitive" as const } }] }
+      ? { OR: [{ symbol: { contains: q } }, { comment: { contains: q } }] }
       : {}),
   };
 

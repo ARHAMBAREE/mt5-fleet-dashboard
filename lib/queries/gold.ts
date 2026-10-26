@@ -7,7 +7,7 @@ export async function getGoldTargets(userId: string): Promise<GoldTarget[]> {
   const positions = await prisma.position.findMany({
     where: {
       account: { userId },
-      OR: [{ symbol: { contains: "XAUUSD", mode: "insensitive" } }, { symbol: { startsWith: "GOLD", mode: "insensitive" } }],
+      OR: [{ symbol: { contains: "XAUUSD" } }, { symbol: { startsWith: "GOLD" } }],
     },
     select: {
       id: true, accountId: true, symbol: true, ticket: true, magic: true, type: true,

@@ -70,24 +70,69 @@ export async function getAnalytics(userId: string, filters: AccountFilters & { r
 
   const currencies = [...new Set(rows.map(r => r.currency))];
   const mixed = currencies.length > 1;
-  const bucketed =
-    mixed ? [] : await prisma.$queryRaw<{ t: Date; equity: number; balance: number }[]>`
-      WITH buckets AS (
-        SELECT generate_series(date_trunc(${bucket}, ${from}::timestamp),
-          date_trunc(${bucket}, NOW()::timestamp), ('1 ' || ${bucket})::interval) AS t
-      )
-      SELECT b.t, SUM(s.equity * a.factor)::float AS equity, SUM(s.balance * a.factor)::float AS balance
-      FROM buckets b CROSS JOIN unnest(${ids}::text[], ${factors}::float8[]) AS a(id, factor)
-      JOIN LATERAL (
-        SELECT equity, balance FROM equity_snapshots
-        WHERE "accountId" = a.id AND at < b.t + ('1 ' || ${bucket})::interval
-        ORDER BY at DESC LIMIT 1
-      ) s ON true
-      GROUP BY b.t ORDER BY b.t
-    `;
 
-  // Anchor the curve with a starting point from the earliest available equity.
-  const series = bucketed.map((b) => ({ t: new Date(b.t).toISOString(), equity: Number(b.equity), balance: Number(b.balance) }));
+  let series: { t: string; equity: number; balance: number }[] = [];
+  if (!mixed) {
+    const factorMap = new Map<string, number>();
+    for (let i = 0; i < ids.length; i++) {
+      factorMap.set(ids[i], factors[i] ?? 1);
+    }
+
+    const stepMs = bucket === "hour" ? 3600_000 : 86400_000;
+    const startTime = new Date(from);
+    if (bucket === "hour") {
+      startTime.setMinutes(0, 0, 0);
+    } else {
+      startTime.setHours(0, 0, 0, 0);
+    }
+
+    const snapshots = await prisma.equitySnapshot.findMany({
+      where: {
+        accountId: { in: ids },
+        at: { gte: from },
+      },
+      orderBy: { at: "asc" },
+      select: { accountId: true, at: true, equity: true, balance: true },
+    });
+
+    const latestByAccount = new Map<string, { equity: number; balance: number }>();
+    const baselines = await Promise.all(
+      ids.map((id) =>
+        prisma.equitySnapshot.findFirst({
+          where: { accountId: id, at: { lt: from } },
+          orderBy: { at: "desc" },
+          select: { accountId: true, equity: true, balance: true },
+        })
+      )
+    );
+    for (const b of baselines) {
+      if (b) latestByAccount.set(b.accountId, { equity: b.equity, balance: b.balance });
+    }
+
+    let snapIdx = 0;
+    for (let t = startTime.getTime(); t <= Date.now(); t += stepMs) {
+      const bucketEnd = t + stepMs;
+      while (snapIdx < snapshots.length && snapshots[snapIdx].at.getTime() < bucketEnd) {
+        const s = snapshots[snapIdx];
+        latestByAccount.set(s.accountId, { equity: s.equity, balance: s.balance });
+        snapIdx++;
+      }
+
+      let totalEquity = 0;
+      let totalBalance = 0;
+      for (const [accId, vals] of latestByAccount.entries()) {
+        const factor = factorMap.get(accId) ?? 1;
+        totalEquity += vals.equity * factor;
+        totalBalance += vals.balance * factor;
+      }
+
+      series.push({
+        t: new Date(t).toISOString(),
+        equity: totalEquity,
+        balance: totalBalance,
+      });
+    }
+  }
   const combinedDd = drawdown(series.map((p) => ({ at: p.t, equity: p.equity, balance: p.balance })));
 
   const totals = {
