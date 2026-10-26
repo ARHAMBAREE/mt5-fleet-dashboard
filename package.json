@@ -11,7 +11,7 @@
     "dev": "next dev -p 3000",
     "dev:ws": "node --env-file=.env --conditions=react-server --import tsx server/websocket/standalone.ts",
     "dev:full": "concurrently -k -n web,ws \"npm run dev\" \"npm run dev:ws\"",
-    "build": "prisma generate && prisma db push --accept-data-loss && node scripts/copy-agent.cjs && next build && node scripts/prepare-standalone.cjs",
+    "build": "prisma generate && node scripts/copy-agent.cjs && next build && node scripts/prepare-standalone.cjs",
     "start": "next start -p 3000",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
