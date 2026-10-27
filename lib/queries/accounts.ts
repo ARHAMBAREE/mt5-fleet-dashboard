@@ -143,13 +143,15 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
   const mixed = currencies.length > 1;
   const monthly = accounts.map(a => ({ value: monthlyValue(a.monthlyPl, now), factor: accountMoneyUnit(a.currency).factor, state: readMonthlyPl(a.monthlyPl) }));
   const starts = monthly.flatMap(m => m.state ? [m.state.startedAt] : []).sort();
+  const reportingToday = rows.filter(r => r.todayRealizedPl !== null);
+  const reportingMonthly = monthly.filter(m => m.value !== null);
   const totals = {
-    monthlyRealizedPl: mixed || monthly.some(m => m.value === null) ? null : monthly.reduce((sum, m) => sum + m.value! * m.factor, 0),
-    monthlyReportingAccounts: monthly.filter(m => m.value !== null).length,
+    monthlyRealizedPl: mixed || reportingMonthly.length === 0 ? null : reportingMonthly.reduce((sum, m) => sum + m.value! * m.factor, 0),
+    monthlyReportingAccounts: reportingMonthly.length,
     monthlyTrackingSince: starts.at(-1) ?? null,
     currencies,
-    todayRealizedPl: mixed || rows.some(r => r.todayRealizedPl === null) ? null : rows.reduce((s, r) => s + r.todayRealizedPl!, 0),
-    realizedReportingAccounts: rows.filter(r => r.todayRealizedPl !== null).length,
+    todayRealizedPl: mixed || reportingToday.length === 0 ? null : reportingToday.reduce((s, r) => s + r.todayRealizedPl!, 0),
+    realizedReportingAccounts: reportingToday.length,
     totalAccounts: rows.length,
     online: rows.filter((r) => r.eaStatus === "ONLINE").length,
     warning: rows.filter((r) => r.eaStatus === "WARNING").length,

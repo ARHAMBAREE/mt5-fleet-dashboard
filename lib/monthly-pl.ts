@@ -16,12 +16,13 @@ export function readMonthlyPl(value: unknown): MonthlyPl | null {
 /** Observe daily cumulative profit. First report is a baseline, never historical backfill. */
 export function observeMonthlyPl(previous: unknown, daily: number | undefined, day: string | undefined, now = new Date()): MonthlyPl | null {
   const old = readMonthlyPl(previous);
-  if (daily === undefined || !Number.isFinite(daily) || day !== reportingDay(now)) return old;
-  const month = day.slice(0, 7);
-  if (!old) return { startedAt: now.toISOString(), month, day, daily, total: 0 };
-  if (day < old.day) return old;
+  if (daily === undefined || !Number.isFinite(daily)) return old;
+  const currentDay = day ?? reportingDay(now);
+  const month = currentDay.slice(0, 7);
+  if (!old) return { startedAt: now.toISOString(), month, day: currentDay, daily, total: 0 };
+  if (day && old.day && day < old.day) return old;
   const total = month !== old.month ? daily : old.total + (day === old.day ? daily - old.daily : daily);
-  return { ...old, month, day, daily, total };
+  return { ...old, month, day: currentDay, daily, total };
 }
 /** Record monthly P&L: directly from EA if provided, or observe daily cumulative profit baseline. */
 export function recordMonthlyPl(
@@ -48,5 +49,7 @@ export function recordMonthlyPl(
 }
 export function monthlyValue(value: unknown, now = new Date()): number | null {
   const state = readMonthlyPl(value);
-  return state ? state.month === reportingDay(now).slice(0, 7) ? state.total : 0 : null;
+  if (!state) return null;
+  const currentMonth = reportingDay(now).slice(0, 7);
+  return state.month === currentMonth ? state.total : 0;
 }

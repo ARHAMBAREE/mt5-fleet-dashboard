@@ -27,7 +27,7 @@ interface Payload {
 export default function AlertsPage() {
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
-  const [draft, setDraft] = useState({ type: "DRAWDOWN_EXCEEDED", threshold: 10, name: "", severity: "WARNING" });
+  const [draft, setDraft] = useState({ type: "ACCOUNT_OFFLINE", threshold: 120, name: "", severity: "WARNING" });
   const [edits, setEdits] = useState<Record<string, string>>({});
 
   const alerts = useResource<Payload>(() => apiGet("/api/alerts"), []);
@@ -73,7 +73,7 @@ export default function AlertsPage() {
         severity: draft.severity,
       });
       setShowCreate(false);
-      setDraft({ type: "DRAWDOWN_EXCEEDED", threshold: 10, name: "", severity: "WARNING" });
+      setDraft({ type: "ACCOUNT_OFFLINE", threshold: 120, name: "", severity: "WARNING" });
       alerts.refetch();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : "Create failed");

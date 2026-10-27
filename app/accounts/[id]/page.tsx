@@ -16,7 +16,6 @@ const TABS: { id: DetailTab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "equity", label: "Equity" },
   { id: "balance", label: "Balance" },
-  { id: "drawdown", label: "Drawdown" },
   { id: "positions", label: "Positions" },
   { id: "orders", label: "Orders" },
   { id: "risk", label: "Risk" },
@@ -114,7 +113,6 @@ export default function AccountDetailPage() {
         <div className="stat accent"><div className="label">Equity</div><div className="value">{moneyFmt(d.account.equity)}</div></div>
         <div className="stat"><div className="label">Balance</div><div className="value">{moneyFmt(d.account.balance)}</div></div>
         <div className={`stat ${r.floatingPl >= 0 ? "good" : "bad"}`}><div className="label">Floating P/L</div><div className="value">{signedMoney(r.floatingPl)}</div></div>
-        <div className="stat"><div className="label">Drawdown</div><div className="value">{pct(r.drawdownPct)}</div><div className="sub">max {pct(r.maxDrawdownPct)}</div></div>
         <div className="stat"><div className="label">Open Positions</div><div className="value">{r.openCount}</div></div>
       </div>
 
@@ -177,15 +175,6 @@ export default function AccountDetailPage() {
         </div>
       )}
 
-      {tab === "drawdown" && (
-        <div className="grid cols-2">
-          <div className="card">
-            <div className="card-title">Drawdown %</div>
-            <LineChart height={260} zeroLine series={[{ name: "Drawdown", color: "#ef4444", points: d.series.drawdown }]} formatV={(v) => `${v.toFixed(2)}%`} />
-          </div>
-        </div>
-      )}
-
       {tab === "positions" && (
         <DataTable
           columns={positionColumns}
@@ -220,17 +209,12 @@ export default function AccountDetailPage() {
       )}
 
       {tab === "risk" && (
-        <div className="grid cols-3">
-          <div className="card">
-            <div className="card-title">Drawdown</div>
-            {kv("Current drawdown", pct(r.drawdownPct))}
-            {kv("Maximum drawdown", pct(r.maxDrawdownPct))}
-            {kv("Equity peak", moneyFmt(r.equityPeak))}
-          </div>
+        <div className="grid cols-2">
           <div className="card">
             <div className="card-title">P/L &amp; Margin</div>
             {kv("Margin usage", pct(r.marginUsagePct))}
             {kv("Floating P/L", <span className={r.floatingPl >= 0 ? "pos" : "neg"}>{signedMoney(r.floatingPl)}</span>)}
+            {kv("Equity peak", moneyFmt(r.equityPeak))}
           </div>
           <div className="card">
             <div className="card-title">Exposure</div>

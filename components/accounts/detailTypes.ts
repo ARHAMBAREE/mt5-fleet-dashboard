@@ -1,5 +1,5 @@
 export type DetailRange = "24h" | "7d" | "30d" | "90d" | "1y";
-export type DetailTab = "overview" | "equity" | "balance" | "drawdown" | "positions" | "orders" | "risk" | "ea";
+export type DetailTab = "overview" | "equity" | "balance" | "positions" | "orders" | "risk" | "ea";
 
 export interface AccountDetailPayload {
   account: {

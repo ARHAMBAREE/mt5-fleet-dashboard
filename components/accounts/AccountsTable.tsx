@@ -70,8 +70,6 @@ export default function AccountsTable({ rows, storageKey = "fleet.accounts" }: {
     { key: "equity", label: "Equity", align: "right", value: (r) => r.equity, render: (r) => <span className="num">{money(r.equity, r.currency)}</span> },
     { key: "floatingPl", label: "Floating P/L", align: "right", value: (r) => r.floatingPl,
       render: (r) => <span className={`num ${r.floatingPl >= 0 ? "pos" : "neg"}`}>{signedMoney(r.floatingPl, r.currency)}</span> },
-    { key: "drawdownPct", label: "Drawdown", align: "right", value: (r) => r.drawdownPct,
-      render: (r) => <span className={`num ${r.drawdownPct >= 10 ? "neg" : ""}`}>{r.drawdownPct.toFixed(2)}%</span> },
     { key: "marginLevel", label: "Margin %", align: "right", value: (r) => r.marginLevel,
       render: (r) => <span className={`num ${r.marginLevel > 0 && r.marginLevel < 100 ? "neg" : "muted"}`}>{r.marginLevel > 0 ? `${r.marginLevel.toFixed(0)}%` : "—"}</span> },
     { key: "openPositions", label: "Positions", align: "right", value: (r) => r.openPositions, render: (r) => <span className="num">{r.openPositions}</span> },

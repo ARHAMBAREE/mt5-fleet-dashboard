@@ -1,7 +1,8 @@
-/** Fleet reporting day uses Pakistan time (UTC+5), consistently across brokers. */
+/** Fleet reporting day matches broker server day. */
 export function reportingDay(now = new Date()): string {
-  return new Date(now.getTime() + 5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return now.toISOString().slice(0, 10);
 }
-export function todayRealized(value: number | null, day: string | null, now = new Date()): number | null {
-  return day === reportingDay(now) ? value : null;
+export function todayRealized(value: number | null | undefined, day?: string | null, now = new Date()): number | null {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  return value;
 }

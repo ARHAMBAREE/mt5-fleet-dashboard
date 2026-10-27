@@ -51,9 +51,8 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
             <div><dt>Equity</dt><dd>{money(r.equity,r.currency)}</dd></div>
             <div><dt>Floating P&amp;L</dt><dd className={r.floatingPl<0?"neg":r.floatingPl>0?"pos":""}>{signedMoney(r.floatingPl,r.currency)}</dd></div>
             <div><dt>Balance</dt><dd>{money(r.balance,r.currency)}</dd></div>
-            <div><dt>Drawdown</dt><dd className={r.drawdownPct>=10?"neg":""}>{r.drawdownPct.toFixed(2)}%</dd><span className="account-day">max {r.maxDrawdownPct.toFixed(2)}%</span></div>
-            <div><dt>Today realized</dt><dd className={r.todayRealizedPl==null?"muted":r.todayRealizedPl<0?"neg":"pos"}>{r.todayRealizedPl==null?"Awaiting data":signedMoney(r.todayRealizedPl,r.currency)}</dd><span className="account-day">Pakistan day</span></div>
-            <div><dt>Month realized</dt><dd className={r.monthlyRealizedPl==null?"muted":r.monthlyRealizedPl<0?"neg":"pos"}>{r.monthlyRealizedPl==null?"Awaiting data":signedMoney(r.monthlyRealizedPl,r.currency)}</dd><span className="account-day">Pakistan month</span></div>
+            <div><dt>Today realized</dt><dd className={r.todayRealizedPl==null?"muted":r.todayRealizedPl<0?"neg":"pos"}>{r.todayRealizedPl==null?"Awaiting data":signedMoney(r.todayRealizedPl,r.currency)}</dd><span className="account-day">Broker day</span></div>
+            <div><dt>Month realized</dt><dd className={r.monthlyRealizedPl==null?"muted":r.monthlyRealizedPl<0?"neg":"pos"}>{r.monthlyRealizedPl==null?"Awaiting data":signedMoney(r.monthlyRealizedPl,r.currency)}</dd><span className="account-day">Broker month</span></div>
           </dl>
           {editing===r.id ? <form className="account-name-form" onSubmit={e=>{e.preventDefault();void save(r.id,{displayName:name});}}>
             <label htmlFor={`name-${r.id}`}>Account name</label><input autoFocus id={`name-${r.id}`} className="input" maxLength={80} value={name} onChange={e=>setName(e.target.value)}/>

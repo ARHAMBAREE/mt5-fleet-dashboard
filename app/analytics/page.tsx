@@ -102,7 +102,6 @@ export default function AnalyticsPage() {
         <div className="stat accent"><div className="label">Combined Equity</div><div className="value">{t?.combinedEquity === null ? "—" : money(t?.combinedEquity ?? 0, analytics.data?.currencies[0] ?? "USD")}</div></div>
         <div className="stat"><div className="label">Combined Balance</div><div className="value">{t?.combinedBalance === null ? "—" : money(t?.combinedBalance ?? 0, analytics.data?.currencies[0] ?? "USD")}</div></div>
         <div className={`stat ${(t?.combinedFloatingPl ?? 0) >= 0 ? "good" : "bad"}`}><div className="label">Combined Floating P/L</div><div className="value">{t?.combinedFloatingPl === null ? "—" : signedMoney(t?.combinedFloatingPl ?? 0, analytics.data?.currencies[0] ?? "USD")}</div></div>
-        <div className="stat bad"><div className="label">Combined Drawdown</div><div className="value">{pct(t?.combinedDrawdownPct ?? 0)}</div><div className="sub">max {pct(t?.maxDrawdownPct ?? 0)}</div></div>
         <div className="stat accent"><div className="label">Accounts / Positions</div><div className="value">{t?.totalAccounts ?? 0} / {t?.openPositions ?? 0}</div><div className="sub">{t?.online ?? 0} online · {t?.offline ?? 0} offline</div></div>
       </div>
 
@@ -122,7 +121,6 @@ export default function AnalyticsPage() {
           <div className="card-title">Leaders &amp; Laggards</div>
           <div className="kv"><span className="k">Best performer (floating P/L)</span><span className="v">{analytics.data?.best ? `${analytics.data.best.login} · ${signedMoney(analytics.data.best.floatingPl)}` : "—"}</span></div>
           <div className="kv"><span className="k">Worst performer (floating P/L)</span><span className="v">{analytics.data?.worst ? `${analytics.data.worst.login} · ${signedMoney(analytics.data.worst.floatingPl)}` : "—"}</span></div>
-          <div className="kv"><span className="k">Highest drawdown</span><span className="v">{analytics.data?.highestDrawdown ? `${analytics.data.highestDrawdown.login} · ${pct(analytics.data.highestDrawdown.drawdownPct)}` : "—"}</span></div>
           <div className="kv"><span className="k">Accounts ranked</span><span className="v">{analytics.data?.ranking.length ?? 0}</span></div>
           <div className="small muted mt">Ranking by current floating P/L. Filters above apply to every figure on this page.</div>
         </div>
@@ -135,7 +133,7 @@ export default function AnalyticsPage() {
               <th>#</th><th>Account</th><th>Broker</th><th>Status</th>
               <th className="right">Equity</th><th className="right">Balance</th>
               <th className="right">Floating P/L</th>
-              <th className="right">Drawdown</th><th className="right">Max DD</th><th className="right">Positions</th>
+              <th className="right">Positions</th>
             </tr>
           </thead>
           <tbody>
@@ -148,8 +146,6 @@ export default function AnalyticsPage() {
                 <td className="right num">{money(r.equity, r.currency)}</td>
                 <td className="right num">{money(r.balance, r.currency)}</td>
                 <td className={`right num ${r.floatingPl >= 0 ? "pos" : "neg"}`}>{signedMoney(r.floatingPl, r.currency)}</td>
-                <td className="right num">{pct(r.drawdownPct)}</td>
-                <td className="right num muted">{pct(r.maxDrawdownPct)}</td>
                 <td className="right num">{r.openPositions}</td>
               </tr>
             ))}
