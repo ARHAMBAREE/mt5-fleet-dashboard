@@ -110,7 +110,7 @@ export default function AlertsPage() {
                 <tr><th>On</th><th>Rule</th><th className="right">Threshold</th><th className="right">Cooldown</th></tr>
               </thead>
               <tbody>
-                {(alerts.data?.alerts ?? []).map((rule) => (
+                {(alerts.data?.alerts ?? []).filter((r) => r.type !== "DRAWDOWN_EXCEEDED").map((rule) => (
                   <tr key={rule.id}>
                     <td><input type="checkbox" checked={rule.enabled} onChange={() => toggle(rule)} aria-label={`Toggle ${rule.name}`} /></td>
                     <td>
@@ -142,13 +142,13 @@ export default function AlertsPage() {
 
         <div className="card">
           <div className="card-title">Event Feed</div>
-          {(alerts.data?.events ?? []).length === 0 ? (
+          {((alerts.data?.events ?? []).filter((e) => e.type !== "DRAWDOWN_EXCEEDED")).length === 0 ? (
             <div className="empty" style={{ padding: 24 }}>
               <div className="big">✓</div>
               No alert events yet.
             </div>
           ) : (
-            (alerts.data?.events ?? []).map((e) => (
+            (alerts.data?.events ?? []).filter((e) => e.type !== "DRAWDOWN_EXCEEDED").map((e) => (
               <div key={e.id} className="kv" style={{ alignItems: "center" }}>
                 <span className="k" style={{ color: e.acknowledgedAt ? "var(--muted-2)" : "var(--text)" }}>
                   <span className={`badge ${e.severity === "CRITICAL" ? "offline" : e.severity === "WARNING" ? "warning" : "neutral"}`} style={{ marginRight: 8 }}>

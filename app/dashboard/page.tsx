@@ -71,13 +71,13 @@ export default function DashboardPage() {
             Recent Alerts
             <a href="/alerts" className="right small">View all →</a>
           </div>
-          {(alerts.data?.events ?? []).length === 0 ? (
+          {((alerts.data?.events ?? []).filter((e) => e.type !== "DRAWDOWN_EXCEEDED")).length === 0 ? (
             <div className="empty" style={{ padding: 22 }}>
               <div className="big">✓</div>
               No alerts — everything within thresholds.
             </div>
           ) : (
-            (alerts.data?.events ?? []).slice(0, 8).map((e) => (
+            (alerts.data?.events ?? []).filter((e) => e.type !== "DRAWDOWN_EXCEEDED").slice(0, 8).map((e) => (
               <div key={e.id} className="kv">
                 <span className="k">
                   <span className={`badge ${e.severity === "CRITICAL" ? "offline" : e.severity === "WARNING" ? "warning" : "neutral"}`} style={{ marginRight: 8 }}>

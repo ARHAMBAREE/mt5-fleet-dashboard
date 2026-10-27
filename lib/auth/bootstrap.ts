@@ -34,7 +34,7 @@ export async function bootstrapUser(userId: string): Promise<void> {
         threshold: DEFAULT_ALERT_THRESHOLDS[type],
         enabled: false, // opt-in after thresholds are tuned
         severity:
-          type === "DRAWDOWN_EXCEEDED" || type === "MARGIN_LEVEL_LOW"
+          type === "MARGIN_LEVEL_LOW"
             ? ("CRITICAL" as const)
             : ("WARNING" as const),
       })),

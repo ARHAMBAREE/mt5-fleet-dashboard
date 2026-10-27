@@ -58,11 +58,6 @@ export async function evaluateAccountAlerts(accountId: string): Promise<void> {
   const now = new Date();
   const needs = (t: string) => alerts.some((a) => a.type === t);
 
-  let ddPct = 0;
-  if (needs("DRAWDOWN_EXCEEDED")) {
-    ddPct = account.equityPeak > 0 ? Math.max(0, (account.equityPeak - account.equity) / account.equityPeak * 100) : 0;
-  }
-
   let maxVolume = 0, worstLoss = 0, bestProfit = 0;
   if (needs("LARGE_POSITION") || needs("LARGE_LOSS") || needs("LARGE_PROFIT")) {
     const positions = await prisma.position.findMany({
@@ -77,10 +72,7 @@ export async function evaluateAccountAlerts(accountId: string): Promise<void> {
   }
 
   for (const alert of alerts) {
-    if (alert.type === "DRAWDOWN_EXCEEDED" && ddPct >= alert.threshold) {
-      await fire({ alert, accountId, accountLabel: label, value: ddPct, cooldown: true,
-        message: `Drawdown ${fmt(ddPct)}% exceeded ${fmt(alert.threshold)}% on ${label}` });
-    } else if (alert.type === "MARGIN_LEVEL_LOW" && account.marginLevel > 0 && account.marginLevel < alert.threshold) {
+    if (alert.type === "MARGIN_LEVEL_LOW" && account.marginLevel > 0 && account.marginLevel < alert.threshold) {
       await fire({ alert, accountId, accountLabel: label, value: account.marginLevel, cooldown: true,
         message: `Margin level ${fmt(account.marginLevel)}% below ${fmt(alert.threshold)}% on ${label}` });
     } else if (alert.type === "ALGO_TRADING_DISABLED" && !account.algoTrading) {

@@ -37,7 +37,6 @@ export const HISTORY_TYPES = [...POSITION_TYPES, "OUT", "IN_BY"] as const;
 export const ALERT_TYPES = [
   "ACCOUNT_OFFLINE",
   "EA_OFFLINE",
-  "DRAWDOWN_EXCEEDED",
   "MARGIN_LEVEL_LOW",
   "ALGO_TRADING_DISABLED",
   "LARGE_POSITION",
@@ -49,7 +48,6 @@ export type AlertType = (typeof ALERT_TYPES)[number];
 export const DEFAULT_ALERT_THRESHOLDS: Record<AlertType, number> = {
   ACCOUNT_OFFLINE: 30,        // seconds
   EA_OFFLINE: 30,             // seconds
-  DRAWDOWN_EXCEEDED: 10,      // percent
   MARGIN_LEVEL_LOW: 100,      // percent
   ALGO_TRADING_DISABLED: 1,   // boolean flag (1 = enabled alert)
   LARGE_POSITION: 10,         // lots

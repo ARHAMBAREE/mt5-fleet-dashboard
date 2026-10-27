@@ -10,7 +10,7 @@ import type { AccountSummary } from "@/shared/types";
 /**
  * Fleet account table — sortable, filterable, column-customizable.
  * STATUS · ACCOUNT · BROKER · SERVER · BALANCE · EQUITY · FLOATING P/L ·
- * DRAWDOWN · MARGIN % · POSITIONS · EA STATUS · LAST SEEN
+ * MARGIN % · POSITIONS · EA STATUS · LAST SEEN
  */
 export default function AccountsTable({ rows, storageKey = "fleet.accounts" }: { rows: AccountSummary[]; storageKey?: string }) {
   const router = useRouter();

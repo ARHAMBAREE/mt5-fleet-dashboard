@@ -34,7 +34,7 @@ export const accountGroupLinkSchema = z.object({
 export const alertSchema = z.object({
   name: cleanString(80).optional(),
   type: z.enum([
-    "ACCOUNT_OFFLINE", "EA_OFFLINE", "DRAWDOWN_EXCEEDED",
+    "ACCOUNT_OFFLINE", "EA_OFFLINE",
     "MARGIN_LEVEL_LOW", "ALGO_TRADING_DISABLED", "LARGE_POSITION", "LARGE_LOSS", "LARGE_PROFIT",
   ]),
   enabled: z.boolean().default(true),
