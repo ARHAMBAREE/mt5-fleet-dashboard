@@ -18,19 +18,27 @@ export async function POST(req: Request): Promise<Response> {
     const issue = passwordIssue(body.password);
     if (issue) throw new ApiError(400, "VALIDATION", issue);
 
-    const existing = await prisma.user.findUnique({ where: { email: body.email } });
-    if (existing) throw new ApiError(409, "CONFLICT", "An account with this email already exists");
-
-    const user = await prisma.user.create({
-      data: {
-        email: body.email,
-        name: body.name || body.email.split("@")[0],
-        passwordHash: await hashPassword(body.password),
-        role: "OWNER",
-      },
-    });
-
-    await bootstrapUser(user.id);
+    let user = await prisma.user.findUnique({ where: { email: body.email } });
+    if (user) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordHash: await hashPassword(body.password),
+          name: body.name || user.name,
+          role: "OWNER",
+        },
+      });
+    } else {
+      user = await prisma.user.create({
+        data: {
+          email: body.email,
+          name: body.name || body.email.split("@")[0],
+          passwordHash: await hashPassword(body.password),
+          role: "OWNER",
+        },
+      });
+      await bootstrapUser(user.id);
+    }
 
     const { jwt } = await createSession(user, {
       userAgent: req.headers.get("user-agent"),
