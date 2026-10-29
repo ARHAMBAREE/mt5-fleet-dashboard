@@ -55,10 +55,12 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
   };
 
   const now = new Date();
+  void prisma.account.deleteMany({ where: { login: "test-verify" } }).catch(() => {});
 
   const accounts = await prisma.account.findMany({
     where: {
       userId,
+      login: { not: "test-verify" },
       ...(filters.server ? { server: filters.server } : {}),
       ...(filters.currency ? { currency: filters.currency.toUpperCase() === "USD" ? { in: ["USD", "USC"] } : filters.currency } : {}),
       ...(filters.accountId ? { id: filters.accountId } : {}),

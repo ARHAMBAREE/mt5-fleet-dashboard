@@ -33,7 +33,6 @@ export default function SummaryCards({ totals, currency = "", goldTargets = [] }
   const cards = [
     { label: "Total Accounts", value: String(totals.totalAccounts), cls: "accent" },
     { label: "Online", value: String(totals.online), cls: "good", sub: `${totals.warning} warning` },
-    { label: "Offline", value: String(totals.offline), cls: totals.offline > 0 ? "bad" : "" },
     { label: "Total Balance", value: cash(totals.totalBalance), cls: "" },
     { label: "Total Equity", value: cash(totals.totalEquity), cls: "accent" },
     { label: "Total P/L · Today", value: totals.todayRealizedPl == null ? "Awaiting data" : cash(totals.todayRealizedPl, true), cls: "pnl-profit", sub: `Realized · Broker time · ${totals.realizedReportingAccounts ?? 0}/${totals.totalAccounts} reporting` },
