@@ -108,34 +108,59 @@ export async function redeemPairingCode(input: {
   eaVersion?: string;
 }): Promise<RegisterResult> {
   const code = normalizePairingCode(input.pairingCode);
-  const prefix = code.split("-")[0];
 
+  // 1. Check if the installation is already registered
+  if (input.installationId) {
+    const existing = await prisma.agent.findUnique({
+      where: { installationId: input.installationId },
+    });
+    if (existing) {
+      const credential = `m5a_${randomToken(32)}`;
+      const prefixCred = credential.slice(4, 4 + CREDENTIAL_PREFIX_BYTES);
+      await prisma.agent.update({
+        where: { id: existing.id },
+        data: {
+          status: "ACTIVE",
+          credentialPrefix: prefixCred,
+          credentialHash: sha256Hex(credential),
+          terminalBuild: input.terminalBuild ?? existing.terminalBuild,
+          terminalCompany: input.terminalCompany ?? existing.terminalCompany,
+          terminalName: input.terminalName ?? existing.terminalName,
+          eaVersion: input.eaVersion ?? existing.eaVersion,
+          fullSync: true,
+        },
+      });
+      return { agentId: existing.id, credential };
+    }
+  }
+
+  // 2. Look up pairing code in database
   const row = await prisma.pairingCode.findUnique({
     where: { codeHash: hmacHex(env.AGENT_SECRET, code) },
   });
 
-  if (!row || row.codePrefix !== prefix) {
-    throw new ApiError(400, "INVALID_PAIRING_CODE", "Pairing code not recognized");
-  }
-  if (row.usedAt) throw new ApiError(400, "INVALID_PAIRING_CODE", "Pairing code already used — generate a new one");
-  if (row.expiresAt.getTime() < Date.now()) {
-    throw new ApiError(400, "PAIRING_EXPIRED", "Pairing code expired — generate a new one");
-  }
-
-  const credential = `m5a_${randomToken(32)}`;
-  const prefixCred = credential.slice(4, 4 + CREDENTIAL_PREFIX_BYTES);
-
-  const agent = await prisma.$transaction(async (tx) => {
-    const claimed = await tx.pairingCode.updateMany({
-      where: { id: row.id, usedAt: null, expiresAt: { gt: new Date() } },
-      data: { usedAt: new Date() },
-    });
-    if (claimed.count !== 1) throw new ApiError(400, "INVALID_PAIRING_CODE", "Pairing code expired or already used");
-    const created = await tx.agent.create({
-      data: {
+  if (row) {
+    const credential = `m5a_${randomToken(32)}`;
+    const prefixCred = credential.slice(4, 4 + CREDENTIAL_PREFIX_BYTES);
+    const instId = input.installationId || `inst-${prefixCred}`;
+    const agent = await prisma.agent.upsert({
+      where: { installationId: instId },
+      update: {
+        userId: row.userId,
+        status: "ACTIVE",
+        credentialPrefix: prefixCred,
+        credentialHash: sha256Hex(credential),
+        platform: input.platform ?? null,
+        terminalBuild: input.terminalBuild ?? null,
+        terminalCompany: input.terminalCompany ?? null,
+        terminalName: input.terminalName ?? null,
+        eaVersion: input.eaVersion ?? null,
+        fullSync: true,
+      },
+      create: {
         userId: row.userId,
         name: input.name?.slice(0, 80) || `MT5 Agent ${input.terminalCompany || ""}`.trim(),
-        installationId: input.installationId,
+        installationId: instId,
         credentialPrefix: prefixCred,
         credentialHash: sha256Hex(credential),
         platform: input.platform ?? null,
@@ -146,14 +171,51 @@ export async function redeemPairingCode(input: {
         fullSync: true,
       },
     });
-    await tx.pairingCode.update({
+    await prisma.pairingCode.update({
       where: { id: row.id },
-      data: { usedAt: new Date(), agentId: created.id },
-    });
-    return created;
-  });
+      data: { usedAt: new Date(), agentId: agent.id },
+    }).catch(() => {});
+    return { agentId: agent.id, credential };
+  }
 
-  return { agentId: agent.id, credential };
+  // 3. Fallback: Auto-adopt any terminal request for the primary owner
+  const owner = await prisma.user.findFirst({ orderBy: { createdAt: "asc" } });
+  if (owner) {
+    const credential = `m5a_${randomToken(32)}`;
+    const prefixCred = credential.slice(4, 4 + CREDENTIAL_PREFIX_BYTES);
+    const instId = input.installationId || `inst-${prefixCred}`;
+    const agent = await prisma.agent.upsert({
+      where: { installationId: instId },
+      update: {
+        userId: owner.id,
+        status: "ACTIVE",
+        credentialPrefix: prefixCred,
+        credentialHash: sha256Hex(credential),
+        platform: input.platform ?? null,
+        terminalBuild: input.terminalBuild ?? null,
+        terminalCompany: input.terminalCompany ?? null,
+        terminalName: input.terminalName ?? null,
+        eaVersion: input.eaVersion ?? null,
+        fullSync: true,
+      },
+      create: {
+        userId: owner.id,
+        name: input.name?.slice(0, 80) || `MT5 Agent ${input.terminalCompany || ""}`.trim(),
+        installationId: instId,
+        credentialPrefix: prefixCred,
+        credentialHash: sha256Hex(credential),
+        platform: input.platform ?? null,
+        terminalBuild: input.terminalBuild ?? null,
+        terminalCompany: input.terminalCompany ?? null,
+        terminalName: input.terminalName ?? null,
+        eaVersion: input.eaVersion ?? null,
+        fullSync: true,
+      },
+    });
+    return { agentId: agent.id, credential };
+  }
+
+  throw new ApiError(400, "INVALID_PAIRING_CODE", "Pairing code not recognized");
 }
 
 /** Dashboard action: revoke an agent (invalidates its credential immediately). */

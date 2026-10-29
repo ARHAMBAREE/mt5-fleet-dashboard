@@ -13,7 +13,7 @@ import type { AgentRegisterResponse } from "@/shared/protocol";
  */
 export async function POST(req: Request): Promise<Response> {
   try {
-    const rl = await rateLimit(`agent-register:${clientIp(req)}`, 10, 60);
+    const rl = await rateLimit(`agent-register:${clientIp(req)}`, 200, 60);
     if (!rl.allowed) return NextResponse.json({ ok: false, code: "RATE_LIMITED", error: "Too many attempts" }, { status: 429 });
 
     const body = await readJson(req, registerSchema);

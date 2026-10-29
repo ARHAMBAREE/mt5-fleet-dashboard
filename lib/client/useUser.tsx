@@ -50,3 +50,4 @@ export function UserProvider({
 export function useCurrentUser(): UserContextValue {
   return useContext(UserContext);
 }
+

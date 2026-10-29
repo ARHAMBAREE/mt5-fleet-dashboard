@@ -19,3 +19,4 @@ export async function getEffectiveFleetUserId(user: AuthUser | { id: string; rol
 
   return owner?.id || user.id;
 }
+

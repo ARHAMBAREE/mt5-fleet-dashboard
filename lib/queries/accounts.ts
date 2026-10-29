@@ -100,7 +100,7 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
     const dd = { peak: a.equityPeak, maxDdPct: a.maxDrawdownPct };
     const currentDd = dd && dd.peak > 0 ? Math.max(0, ((dd.peak - a.equity) / dd.peak) * 100) : 0;
     const revoked = a.agent?.status === "REVOKED";
-    const lastBeat = revoked || !a.agentId || !a.terminalConnected ? null : a.lastHeartbeatAt;
+    const lastBeat = revoked || !a.agentId ? null : a.lastHeartbeatAt;
     return {
       id: a.id,
       displayName: a.displayName, favorite: a.favorite,

@@ -45,7 +45,7 @@ export async function getAccountDetail(userId: string, accountId: string, range:
   const floating = account.equity - account.balance - account.credit;
 
   const revoked = account.agent?.status === "REVOKED";
-  const lastBeat = revoked || !account.agentId || !account.terminalConnected ? null : account.lastHeartbeatAt;
+  const lastBeat = revoked || !account.agentId ? null : account.lastHeartbeatAt;
 
   return {
     account: {

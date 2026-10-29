@@ -60,3 +60,4 @@ export const POST = withAuth({ minRole: "ADMIN" }, async (req) => {
 
   return NextResponse.json({ ok: true, user });
 });
+

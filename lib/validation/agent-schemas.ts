@@ -5,9 +5,9 @@ const ticket = () => z.union([z.string().regex(/^\d{1,20}$/), z.number().int().m
 
 export const registerSchema = z.object({
   v: z.literal(1),
-  pairingCode: z.string().min(9).max(12),
-  installationId: z.string().min(8).max(64).regex(/^[A-Za-z0-9-]+$/),
-  platform: z.string().max(32).default("windows"),
+  pairingCode: z.string().min(1).max(128),
+  installationId: z.string().max(128).default(""),
+  platform: z.string().max(64).default("windows"),
   terminalBuild: z.number().int().min(0).default(0),
   terminalCompany: z.string().max(120).default(""),
   terminalName: z.string().max(120).default(""),

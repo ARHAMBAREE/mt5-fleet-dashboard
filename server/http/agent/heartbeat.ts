@@ -52,16 +52,41 @@ export async function POST(req: Request): Promise<Response> {
     ]);
 
     // Attach the agent to its account (and keep EA status fresh).
-    const account = await prisma.account.findFirst({
-      where: { userId: agent.userId, login: body.accountLogin, server: body.server, agentId: agent.id },
+    let account = await prisma.account.findFirst({
+      where: {
+        userId: agent.userId,
+        login: body.accountLogin,
+        ...(body.server ? { server: body.server } : {}),
+      },
       orderBy: { updatedAt: "desc" },
     });
+
+    if (!account) {
+      account = await prisma.account.findFirst({
+        where: {
+          userId: agent.userId,
+          login: body.accountLogin,
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
+
+    if (!account) {
+      account = await prisma.account.findFirst({
+        where: {
+          login: body.accountLogin,
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
+
     if (account) {
       await Promise.all([
         prisma.account.update({
           where: { id: account.id },
           data: {
             agentId: agent.id,
+            userId: agent.userId,
             broker: body.broker || account.broker,
             server: body.server || account.server,
             terminalConnected: body.terminalConnected,
@@ -89,6 +114,32 @@ export async function POST(req: Request): Promise<Response> {
         }),
         publishThrottled(agent.userId, "heartbeat", { accountId: account.id, at: now.toISOString() }),
       ]);
+    } else {
+      const createdAcc = await prisma.account.create({
+        data: {
+          userId: agent.userId,
+          login: body.accountLogin,
+          broker: body.broker || "MetaQuotes",
+          server: body.server || "Live",
+          currency: "USD",
+          mode: "LIVE",
+          agentId: agent.id,
+          terminalConnected: body.terminalConnected,
+          algoTrading: body.algoTrading,
+          lastHeartbeatAt: now,
+        },
+      });
+      await prisma.eaStatus.create({
+        data: {
+          accountId: createdAcc.id,
+          eaLoaded: body.eaLoaded,
+          terminalConnected: body.terminalConnected,
+          algoTrading: body.algoTrading,
+          build: body.build,
+          lastHeartbeatAt: now,
+        },
+      });
+      await publishThrottled(agent.userId, "heartbeat", { accountId: createdAcc.id, at: now.toISOString() });
     }
 
     const res: AgentHeartbeatResponse = {

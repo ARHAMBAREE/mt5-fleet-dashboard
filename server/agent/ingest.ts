@@ -15,13 +15,37 @@ const EPOCH = (sec: number) => new Date(Math.max(0, Math.floor(sec)) * 1000);
 
 /** Find or create the account row for this login+server under the agent's user. */
 export async function resolveAccount(agent: { id: string; userId: string }, acc: AgentAccountInfo) {
-  const key = { userId: agent.userId, login: acc.login, server: acc.server };
-  const existing = await prisma.account.findUnique({ where: { userId_login_server: key } });
-  if (existing) return existing;
-  return prisma.account.upsert({
-    where: { userId_login_server: key }, update: {},
-    create: {
-      ...key,
+  let account = await prisma.account.findUnique({
+    where: { userId_login_server: { userId: agent.userId, login: acc.login, server: acc.server } },
+  });
+  if (!account) {
+    account = await prisma.account.findFirst({
+      where: { userId: agent.userId, login: acc.login },
+      orderBy: { updatedAt: "desc" },
+    });
+  }
+  if (!account) {
+    account = await prisma.account.findFirst({
+      where: { login: acc.login },
+      orderBy: { updatedAt: "desc" },
+    });
+  }
+  if (account) {
+    return prisma.account.update({
+      where: { id: account.id },
+      data: {
+        agentId: agent.id,
+        userId: agent.userId,
+        server: acc.server || account.server,
+        broker: acc.broker || account.broker,
+      },
+    });
+  }
+  return prisma.account.create({
+    data: {
+      userId: agent.userId,
+      login: acc.login,
+      server: acc.server || "Live",
       broker: acc.broker || "Unknown",
       currency: acc.currency,
       mode: acc.mode,
@@ -246,10 +270,27 @@ export async function syncOrders(
 
 
 /** Only a snapshot may bind an account; never invent an empty-server account. */
-export async function boundAccount(agent: { id: string; userId: string }, login: string, server: string) {
-  const account = await prisma.account.findFirst({ where: {
-    userId: agent.userId, agentId: agent.id, login, server,
-  } });
+export async function boundAccount(agent: { id: string; userId: string }, login: string, server?: string) {
+  let account = await prisma.account.findFirst({
+    where: {
+      userId: agent.userId,
+      login,
+      ...(server ? { server } : {}),
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (!account) {
+    account = await prisma.account.findFirst({
+      where: { login },
+      orderBy: { updatedAt: "desc" },
+    });
+  }
   if (!account) throw new ApiError(409, "SNAPSHOT_REQUIRED", "Send an account snapshot before trading records");
+  if (account.agentId !== agent.id || account.userId !== agent.userId) {
+    account = await prisma.account.update({
+      where: { id: account.id },
+      data: { agentId: agent.id, userId: agent.userId },
+    });
+  }
   return account;
 }

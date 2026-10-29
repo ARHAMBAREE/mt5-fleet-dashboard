@@ -18,6 +18,6 @@ export async function getGoldTargets(userId: string): Promise<GoldTarget[]> {
   });
   return positions.filter(p => goldQuote(p.symbol) === "USD").map(({ account, ...p }) => ({
     ...p, updatedAt: p.updatedAt.toISOString(), login: account.login, server: account.server,
-    online: !!account.agent && account.agent.status !== "REVOKED" && account.terminalConnected && deriveEaStatus(account.lastHeartbeatAt) === "ONLINE",
+    online: !!account.agent && account.agent.status !== "REVOKED" && deriveEaStatus(account.lastHeartbeatAt) === "ONLINE",
   }));
 }
