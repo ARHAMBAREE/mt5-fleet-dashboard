@@ -18,6 +18,14 @@ export async function POST(req: Request): Promise<Response> {
     const issue = passwordIssue(body.password);
     if (issue) throw new ApiError(400, "VALIDATION", issue);
 
+    const ownerCount = await prisma.user.count({ where: { role: "OWNER" } });
+    if (ownerCount > 0) {
+      const existingUser = await prisma.user.findUnique({ where: { email: body.email } });
+      if (!existingUser || existingUser.role !== "OWNER") {
+        throw new ApiError(403, "REGISTRATION_CLOSED", "Public registration is closed. Please ask an administrator to create your login.");
+      }
+    }
+
     let user = await prisma.user.findUnique({ where: { email: body.email } });
     if (user) {
       user = await prisma.user.update({

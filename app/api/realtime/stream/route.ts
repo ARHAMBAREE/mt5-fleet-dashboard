@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
+import { getEffectiveFleetUserId } from "@/lib/auth/fleet-user";
 import { eventsAfter, latestEventId } from "@/lib/realtime/publish";
 import { evaluateOfflineAlerts } from "@/server/agent/alerts";
 
@@ -22,6 +23,8 @@ export async function GET(req: NextRequest): Promise<Response> {
   const user = await getSessionUser(req);
   if (!user) return new Response("Unauthorized", { status: 401 });
 
+  const fleetUserId = await getEffectiveFleetUserId(user);
+
   const url = new URL(req.url);
   const requested = Number(url.searchParams.get("after") ?? "");
   const lastEventId = req.headers.get("last-event-id");
@@ -30,7 +33,7 @@ export async function GET(req: NextRequest): Promise<Response> {
       ? BigInt(lastEventId)
       : Number.isFinite(requested) && requested > 0
         ? BigInt(requested)
-        : await latestEventId(user.id);
+        : await latestEventId(fleetUserId);
 
   const encoder = new TextEncoder();
   let cancelled = false;
@@ -65,7 +68,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
       while (!cancelled && Date.now() - openedAt < MAX_STREAM_MS) {
         try {
-          const batch = await eventsAfter(user.id, cursor, 100);
+          const batch = await eventsAfter(fleetUserId, cursor, 100);
           for (const ev of batch) {
             cursor = ev.id;
             send({ type: ev.type, data: ev.data, ts: ev.createdAt.getTime() }, ev.id.toString());
@@ -79,7 +82,7 @@ export async function GET(req: NextRequest): Promise<Response> {
         if (Date.now() - lastEval > OFFLINE_EVAL_MS) {
           lastEval = Date.now();
           if (!await getSessionUser(req)) { cancelled = true; break; }
-          await evaluateOfflineAlerts(user.id).catch(() => {});
+          await evaluateOfflineAlerts(fleetUserId).catch(() => {});
         }
 
         await new Promise((r) => setTimeout(r, TICK_MS));

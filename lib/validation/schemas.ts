@@ -22,6 +22,19 @@ export const registerSchema = z.object({
   name: cleanString(80),
 });
 
+export const createUserSchema = z.object({
+  email: z.string().email().max(254).transform((s) => s.toLowerCase().trim()),
+  password: z.string().min(6).max(200),
+  name: cleanString(80),
+  role: z.enum(["ADMIN", "VIEWER"]).default("VIEWER"),
+});
+
+export const updateUserSchema = z.object({
+  role: z.enum(["ADMIN", "VIEWER"]).optional(),
+  name: cleanString(80).optional(),
+  password: z.string().min(6).max(200).optional(),
+});
+
 export const groupSchema = z.object({
   name: cleanString(40),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#3b82f6"),

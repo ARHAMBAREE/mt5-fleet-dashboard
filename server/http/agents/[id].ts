@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, handleApiError, readJson, withAuth } from "@/lib/auth/guard";
 import { prisma } from "@/lib/database/prisma";
+import { getEffectiveFleetUserId } from "@/lib/auth/fleet-user";
 import { revokeAgent } from "@/lib/agent/auth";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,8 @@ export const PATCH = withAuth<{ id: string }>(
   async (req, ctx) => {
     const { id } = await ctx.params;
     const body = await readJson(req, renameSchema);
-    const agent = await prisma.agent.findFirst({ where: { id, userId: ctx.user.id } });
+    const fleetUserId = await getEffectiveFleetUserId(ctx.user);
+    const agent = await prisma.agent.findFirst({ where: { id, userId: fleetUserId } });
     if (!agent) throw new ApiError(404, "NOT_FOUND", "Agent not found");
     const updated = await prisma.agent.update({ where: { id }, data: { name: body.name } });
     return Response.json({ ok: true, agent: { id: updated.id, name: updated.name } });
@@ -27,7 +29,8 @@ export const DELETE = withAuth<{ id: string }>(
   { minRole: "ADMIN", limit: { key: "agents-write", limit: 60, windowSec: 60 } },
   async (_req, ctx) => {
     const { id } = await ctx.params;
-    await revokeAgent(ctx.user.id, id);
+    const fleetUserId = await getEffectiveFleetUserId(ctx.user);
+    await revokeAgent(fleetUserId, id);
     return Response.json({ ok: true });
   }
 );

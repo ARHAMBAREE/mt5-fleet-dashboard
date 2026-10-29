@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { ApiError, readJson, withAuth } from "@/lib/auth/guard";
+import { getEffectiveFleetUserId } from "@/lib/auth/fleet-user";
 import { prisma } from "@/lib/database/prisma";
 import { z } from "zod";
 import { RETENTION_OPTIONS } from "@/shared/types";
@@ -18,7 +19,8 @@ const retentionSchema = z.object({ period: z.enum(RETENTION_OPTIONS) });
  * PUT /api/settings — upsert {key, value}
  */
 export const GET = withAuth({ limit: { key: "settings", limit: 240, windowSec: 60 } }, async (_req, ctx) => {
-  const rows = await prisma.setting.findMany({ where: { userId: ctx.user.id } });
+  const fleetUserId = await getEffectiveFleetUserId(ctx.user);
+  const rows = await prisma.setting.findMany({ where: { userId: fleetUserId } });
   const map = rows.reduce<Record<string, unknown>>((acc, r) => ({ ...acc, [r.key]: r.value }), {});
   return Response.json({
     settings: {
@@ -37,9 +39,11 @@ export const PUT = withAuth({ minRole: "ADMIN", limit: { key: "settings-write", 
   const body = await readJson(req, putSchema);
   if (body.key === "retention") retentionSchema.parse(body.value);
 
+  const fleetUserId = await getEffectiveFleetUserId(ctx.user);
+
   await prisma.setting.upsert({
-    where: { userId_key: { userId: ctx.user.id, key: body.key } },
-    create: { userId: ctx.user.id, key: body.key, value: body.value as Prisma.InputJsonValue },
+    where: { userId_key: { userId: fleetUserId, key: body.key } },
+    create: { userId: fleetUserId, key: body.key, value: body.value as Prisma.InputJsonValue },
     update: { value: body.value as Prisma.InputJsonValue },
   });
   return Response.json({ ok: true });

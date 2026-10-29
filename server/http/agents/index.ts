@@ -2,6 +2,7 @@ import { z } from "zod";
 import { NextResponse } from "next/server";
 import { handleApiError, readJson, withAuth } from "@/lib/auth/guard";
 import { prisma } from "@/lib/database/prisma";
+import { getEffectiveFleetUserId } from "@/lib/auth/fleet-user";
 import { createPairingCode } from "@/lib/agent/auth";
 import { deriveEaStatus } from "@/lib/status";
 
@@ -14,18 +15,19 @@ const createSchema = z.object({ label: z.string().max(80).optional() });
  * POST /api/agents — generate a pairing code {label?}
  */
 export const GET = withAuth({ limit: { key: "agents", limit: 240, windowSec: 60 } }, async (_req, ctx) => {
+  const fleetUserId = await getEffectiveFleetUserId(ctx.user);
   const [agents, codes, heartbeats] = await Promise.all([
     prisma.agent.findMany({
-      where: { userId: ctx.user.id },
+      where: { userId: fleetUserId },
       orderBy: { pairedAt: "desc" },
       include: { _count: { select: { accounts: true } } },
     }),
     prisma.pairingCode.findMany({
-      where: { userId: ctx.user.id, usedAt: null, expiresAt: { gt: new Date() } },
+      where: { userId: fleetUserId, usedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: "desc" },
       take: 10,
     }),
-    prisma.heartbeat.findMany({ where: { agent: { userId: ctx.user.id } } }),
+    prisma.heartbeat.findMany({ where: { agent: { userId: fleetUserId } } }),
   ]);
 
   const hbByAgent = new Map(heartbeats.map((h) => [h.agentId, h]));
@@ -69,7 +71,8 @@ export const GET = withAuth({ limit: { key: "agents", limit: 240, windowSec: 60 
 
 export const POST = withAuth({ minRole: "ADMIN", limit: { key: "pairing", limit: 10, windowSec: 60 } }, async (req, ctx) => {
   const body = await readJson(req, createSchema.optional().default({}));
-  const result = await createPairingCode(ctx.user.id, body.label);
+  const fleetUserId = await getEffectiveFleetUserId(ctx.user);
+  const result = await createPairingCode(fleetUserId, body.label);
   return NextResponse.json(
     { ok: true, code: result.code, expiresAt: result.expiresAt.toISOString() },
     { status: 201 }

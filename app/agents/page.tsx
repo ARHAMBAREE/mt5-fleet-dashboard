@@ -6,6 +6,7 @@ import { useLiveRefresh } from "@/lib/realtime/hooks";
 import { apiGet, apiSend, ApiClientError } from "@/lib/client/api";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { fmtDateTime, lastSeenLabel } from "@/lib/format";
+import { useCurrentUser } from "@/lib/client/useUser";
 
 interface AgentRow {
   id: string; name: string; status: string; platform: string | null;
@@ -21,6 +22,7 @@ interface AgentsPayload {
 }
 
 export default function AgentsPage() {
+  const { isViewer } = useCurrentUser();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [newCode, setNewCode] = useState<{ code: string; expiresAt: string } | null>(null);
@@ -72,9 +74,11 @@ export default function AgentsPage() {
         <h2>MT5 Agents</h2>
         <span className="pill-count">{agents.data?.agents.filter((a) => a.status === "ACTIVE").length ?? 0} active</span>
         <span className="spacer" />
-        <button className="btn primary" onClick={addAgent} disabled={busy}>
-          {busy ? "Generating…" : "＋ Add Agent"}
-        </button>
+        {!isViewer && (
+          <button className="btn primary" onClick={addAgent} disabled={busy}>
+            {busy ? "Generating…" : "＋ Add Agent"}
+          </button>
+        )}
       </div>
 
       {error && <div className="form-error">{error}</div>}
@@ -119,7 +123,7 @@ export default function AgentsPage() {
                   </td>
                   <td className="small muted">{fmtDateTime(a.pairedAt)}</td>
                   <td className="right">
-                    {a.status === "ACTIVE" && (
+                    {a.status === "ACTIVE" && !isViewer && (
                       <button className="btn sm danger" onClick={() => revoke(a.id, a.name)}>Revoke</button>
                     )}
                   </td>

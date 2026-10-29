@@ -1,5 +1,6 @@
 import { ApiError, withAuth } from "@/lib/auth/guard";
 import { prisma } from "@/lib/database/prisma";
+import { getEffectiveFleetUserId } from "@/lib/auth/fleet-user";
 import { exportQuerySchema, toCsv } from "@/lib/validation/schemas";
 import { getAccountSummaries } from "@/lib/queries/accounts";
 
@@ -12,7 +13,8 @@ export const dynamic = "force-dynamic";
 export const GET = withAuth({ limit: { key: "export", limit: 30, windowSec: 300 } }, async (req, ctx) => {
   const q = exportQuerySchema.parse(Object.fromEntries(req.nextUrl.searchParams));
   const accountId = q.accountId;
-  const owner = { userId: ctx.user.id, ...(accountId ? { id: accountId } : {}) };
+  const fleetUserId = await getEffectiveFleetUserId(ctx.user);
+  const owner = { userId: fleetUserId, ...(accountId ? { id: accountId } : {}) };
 
   let headers: string[];
   let rows: unknown[][];
@@ -21,7 +23,7 @@ export const GET = withAuth({ limit: { key: "export", limit: 30, windowSec: 300 
 
   switch (q.type) {
     case "accounts": {
-      const { rows: accounts, totals } = await getAccountSummaries(ctx.user.id, {});
+      const { rows: accounts, totals } = await getAccountSummaries(fleetUserId, {});
       headers = ["STATUS", "ACCOUNT", "BROKER", "SERVER", "MODE", "CURRENCY", "ACCOUNT_CURRENCY", "BALANCE", "EQUITY", "FLOATING_PL", "DRAWDOWN_PCT", "MAX_DD_PCT", "MARGIN_PCT", "POSITIONS", "LEVERAGE", "LAST_HEARTBEAT"];
       rows = accounts.map((a) => [
         a.eaStatus, a.login, a.broker, a.server, a.mode, a.currency, a.sourceCurrency,
@@ -56,7 +58,7 @@ export const GET = withAuth({ limit: { key: "export", limit: 30, windowSec: 300 
       break;
     }
     case "analytics": {
-      const { rows: accounts } = await getAccountSummaries(ctx.user.id, {});
+      const { rows: accounts } = await getAccountSummaries(fleetUserId, {});
       headers = ["RANK", "ACCOUNT", "BROKER", "CURRENCY", "STATUS", "EQUITY", "BALANCE", "FLOATING_PL", "DRAWDOWN_PCT", "MAX_DD_PCT", "OPEN_POSITIONS"];
       rows = [...accounts]
         .sort((a, b) => b.floatingPl - a.floatingPl)

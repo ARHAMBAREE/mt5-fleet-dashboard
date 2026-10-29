@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
+import { getEffectiveFleetUserId } from "@/lib/auth/fleet-user";
 import { eventsAfter, latestEventId } from "@/lib/realtime/publish";
 
 export const dynamic = "force-dynamic";
@@ -13,10 +14,12 @@ export async function GET(req: NextRequest): Promise<Response> {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ ok: false, code: "UNAUTHORIZED" }, { status: 401 });
 
-  const after = req.nextUrl.searchParams.get("after");
-  let cursor: bigint | null = after && /^\d+$/.test(after) ? BigInt(after) : await latestEventId(user.id);
+  const fleetUserId = await getEffectiveFleetUserId(user);
 
-  const events = await eventsAfter(user.id, cursor, 200);
+  const after = req.nextUrl.searchParams.get("after");
+  let cursor: bigint | null = after && /^\d+$/.test(after) ? BigInt(after) : await latestEventId(fleetUserId);
+
+  const events = await eventsAfter(fleetUserId, cursor, 200);
   if (events.length) cursor = events[events.length - 1].id;
 
   return NextResponse.json({

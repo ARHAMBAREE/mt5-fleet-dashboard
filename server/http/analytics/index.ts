@@ -1,5 +1,6 @@
 import { fleetQuerySchema } from "@/lib/validation/schemas";
 import { withAuth } from "@/lib/auth/guard";
+import { getEffectiveFleetUserId } from "@/lib/auth/fleet-user";
 import { getAnalytics } from "@/lib/queries/analytics";
 import type { AccountFilters } from "@/lib/queries/accounts";
 
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
  */
 export const GET = withAuth({ limit: { key: "analytics", limit: 120, windowSec: 60 } }, async (req, ctx) => {
   const filters = fleetQuerySchema.parse(Object.fromEntries([...req.nextUrl.searchParams].filter(([, value]) => value !== "")));
-  const data = await getAnalytics(ctx.user.id, filters);
+  const fleetUserId = await getEffectiveFleetUserId(ctx.user);
+  const data = await getAnalytics(fleetUserId, filters);
   return Response.json(data);
 });

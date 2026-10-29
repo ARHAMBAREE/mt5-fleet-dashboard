@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
+import { getEffectiveFleetUserId } from "@/lib/auth/fleet-user";
 import { prisma } from "@/lib/database/prisma";
 import { deriveEaStatus } from "@/lib/status";
 
@@ -9,15 +10,17 @@ export async function GET(req: NextRequest): Promise<Response> {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ ok: false, authenticated: false }, { status: 401 });
 
+  const fleetUserId = await getEffectiveFleetUserId(user);
+
   const [settings, unack, accountCount] = await Promise.all([
-    prisma.setting.findMany({ where: { userId: user.id } }),
-    prisma.alertEvent.count({ where: { userId: user.id, acknowledgedAt: null } }),
-    prisma.account.count({ where: { userId: user.id } }),
+    prisma.setting.findMany({ where: { userId: fleetUserId } }),
+    prisma.alertEvent.count({ where: { userId: fleetUserId, acknowledgedAt: null } }),
+    prisma.account.count({ where: { userId: fleetUserId } }),
   ]);
 
   // Quick fleet heartbeat so the shell can paint status immediately.
   const recent = await prisma.account.findMany({
-    where: { userId: user.id },
+    where: { userId: fleetUserId },
     select: { lastHeartbeatAt: true },
     take: 500,
   });

@@ -6,6 +6,7 @@ import { useLiveRefresh } from "@/lib/realtime/hooks";
 import { apiGet, apiSend, ApiClientError } from "@/lib/client/api";
 import { fmtDateTime, money } from "@/lib/format";
 import { TYPE_LABELS } from "@/components/alerts/typeLabels";
+import { useCurrentUser } from "@/lib/client/useUser";
 
 interface AlertRule {
   id: string; name: string; type: string; enabled: boolean; threshold: number;
@@ -25,6 +26,7 @@ interface Payload {
 }
 
 export default function AlertsPage() {
+  const { isViewer } = useCurrentUser();
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [draft, setDraft] = useState({ type: "ACCOUNT_OFFLINE", threshold: 120, name: "", severity: "WARNING" });
@@ -96,7 +98,7 @@ export default function AlertsPage() {
         <span className="pill-count">{alerts.data?.unacknowledged ?? 0} unacknowledged</span>
         <span className="spacer" />
         <button className="btn sm" onClick={() => ack()}>✓ Acknowledge all</button>
-        <button className="btn primary sm" onClick={() => setShowCreate(true)}>＋ New rule</button>
+        {!isViewer && <button className="btn primary sm" onClick={() => setShowCreate(true)}>＋ New rule</button>}
       </div>
 
       {error && <div className="form-error">{error}</div>}
@@ -112,7 +114,7 @@ export default function AlertsPage() {
               <tbody>
                 {(alerts.data?.alerts ?? []).filter((r) => r.type !== "DRAWDOWN_EXCEEDED").map((rule) => (
                   <tr key={rule.id}>
-                    <td><input type="checkbox" checked={rule.enabled} onChange={() => toggle(rule)} aria-label={`Toggle ${rule.name}`} /></td>
+                    <td><input type="checkbox" checked={rule.enabled} disabled={isViewer} onChange={() => toggle(rule)} aria-label={`Toggle ${rule.name}`} /></td>
                     <td>
                       <div className="bold">{TYPE_LABELS[rule.type] ?? rule.type}</div>
                       <div className="small muted">

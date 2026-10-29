@@ -5,6 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRealtimeEvents, useRealtimeStatus } from "@/lib/realtime/hooks";
 import { apiGet, apiSend, ApiClientError } from "@/lib/client/api";
+import { UserProvider } from "@/lib/client/useUser";
+import type { Role } from "@/shared/types";
 
 function ThemeIcon({kind}:{kind:string}) {
   const paths: Record<string,React.ReactNode> = {
@@ -35,7 +37,7 @@ const MOBILE_NAV = NAV_ITEMS.filter((i) =>
 );
 
 interface Me {
-  user: { id: string; email: string; name: string; role: string };
+  user: { id: string; email: string; name: string; role: Role };
   counts?: { unacknowledgedAlerts?: number; accounts?: number; online?: number };
 }
 
@@ -141,7 +143,8 @@ export default function ShellWrapper({ children }: { children: React.ReactNode }
     status === "connecting" ? "CONNECTING" : "OFFLINE";
 
   return (
-    <div className="shell">
+    <UserProvider user={me?.user ?? null}>
+      <div className="shell">
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-logo">F5</span>
@@ -169,8 +172,24 @@ export default function ShellWrapper({ children }: { children: React.ReactNode }
           ))}
         </nav>
         <div style={{ padding: "12px 14px", borderTop: "1px solid var(--border)", fontSize: 12 }}>
-          <div className="muted" style={{ marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis" }}>
-            {me?.user.email ?? "…"}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <span className="muted" style={{ overflow: "hidden", textOverflow: "ellipsis", fontSize: 11 }}>
+              {me?.user.email ?? "…"}
+            </span>
+            {me?.user.role && (
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  padding: "1px 6px",
+                  borderRadius: 4,
+                  background: me.user.role === "VIEWER" ? "rgba(148, 163, 184, 0.2)" : "rgba(99, 102, 241, 0.2)",
+                  color: me.user.role === "VIEWER" ? "#94a3b8" : "var(--primary, #6366f1)",
+                }}
+              >
+                {me.user.role === "VIEWER" ? "VIEWER" : me.user.role === "ADMIN" ? "ADMIN" : "OWNER"}
+              </span>
+            )}
           </div>
           <button className="btn sm block" onClick={logout}>Sign out</button>
         </div>
@@ -180,6 +199,19 @@ export default function ShellWrapper({ children }: { children: React.ReactNode }
         <header className="topbar">
           <div className="topbar-title"><div className="topbar-eyebrow">MT5 MONITOR</div><h1>{pathname === "/dashboard" ? "Portfolio overview" : titleFor(pathname)}</h1></div>
           <span className="spacer" />
+          {me?.user.role === "VIEWER" && (
+            <span
+              className="conn-pill"
+              style={{
+                borderColor: "rgba(148, 163, 184, 0.4)",
+                color: "#94a3b8",
+                background: "rgba(148, 163, 184, 0.1)",
+              }}
+              title="You have read-only access. Account modifications and configuration changes are restricted."
+            >
+              👁 VIEWER (READ-ONLY)
+            </span>
+          )}
           <button className="btn sm ghost hide-mobile" onClick={enableNotifications} title="Enable browser/desktop notifications">
             🔔
           </button>
@@ -252,6 +284,7 @@ export default function ShellWrapper({ children }: { children: React.ReactNode }
         ))}
       </div>
     </div>
+    </UserProvider>
   );
 }
 

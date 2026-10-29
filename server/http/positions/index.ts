@@ -1,5 +1,6 @@
 import { withAuth } from "@/lib/auth/guard";
 import { prisma } from "@/lib/database/prisma";
+import { getEffectiveFleetUserId } from "@/lib/auth/fleet-user";
 import { paginationSchema } from "@/lib/validation/schemas";
 
 export const dynamic = "force-dynamic";
@@ -19,8 +20,10 @@ export const GET = withAuth({ limit: { key: "positions", limit: 240, windowSec: 
   const type = sp.get("type");
   const q = sp.get("q");
 
+  const fleetUserId = await getEffectiveFleetUserId(ctx.user);
+
   const where: import("@prisma/client").Prisma.PositionWhereInput = {
-    account: { userId: ctx.user.id },
+    account: { userId: fleetUserId },
     ...(accountId ? { accountId } : {}),
     ...(symbol ? { symbol } : {}),
     ...(type === "BUY" || type === "SELL" ? { type } : {}),

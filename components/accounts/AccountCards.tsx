@@ -5,8 +5,10 @@ import {compareAccountIdentity} from "@/shared/account-order";
 import type {AccountSummary} from "@/shared/types";
 import {apiSend} from "@/lib/client/api";
 import {money, signedMoney} from "@/lib/format";
+import {useCurrentUser} from "@/lib/client/useUser";
 
 export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onUpdated:()=>void}) {
+  const {isViewer} = useCurrentUser();
   const [search,setSearch]=useState("");
   const [filter,setFilter]=useState("");
   const [editing,setEditing]=useState<string|null>(null);
@@ -44,7 +46,7 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
           <header className="account-card-head">
             <span className="account-avatar" aria-hidden="true">{initials}</span>
             <div className="account-identity"><Link href={`/accounts/${r.id}`} className="account-name">{title}</Link><div className="account-broker">#{r.login} · {r.broker}</div></div>
-            <button className={`favorite-button ${r.favorite?"selected":""}`} aria-label={`${r.favorite?"Unfavorite":"Favorite"} ${title}`} aria-pressed={r.favorite} disabled={pending===r.id} onClick={()=>void save(r.id,{favorite:!r.favorite})}>{r.favorite?"★":"☆"}</button>
+            {!isViewer && <button className={`favorite-button ${r.favorite?"selected":""}`} aria-label={`${r.favorite?"Unfavorite":"Favorite"} ${title}`} aria-pressed={r.favorite} disabled={pending===r.id} onClick={()=>void save(r.id,{favorite:!r.favorite})}>{r.favorite?"★":"☆"}</button>}
           </header>
           <div className="account-card-status"><span><i className={`account-dot ${r.eaStatus.toLowerCase()}`}/>{r.eaStatus==="ONLINE"?"Connected":r.eaStatus==="WARNING"?"Connection warning":"Offline · last known values"}</span><span>{r.openPositions} open</span></div>
           <dl className="account-metrics">
@@ -54,10 +56,10 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
             <div><dt>Today realized</dt><dd className={r.todayRealizedPl==null?"muted":r.todayRealizedPl<0?"neg":"pos"}>{r.todayRealizedPl==null?"Awaiting data":signedMoney(r.todayRealizedPl,r.currency)}</dd><span className="account-day">Broker day</span></div>
             <div><dt>Month realized</dt><dd className={r.monthlyRealizedPl==null?"muted":r.monthlyRealizedPl<0?"neg":"pos"}>{r.monthlyRealizedPl==null?"Awaiting data":signedMoney(r.monthlyRealizedPl,r.currency)}</dd><span className="account-day">Broker month</span></div>
           </dl>
-          {editing===r.id ? <form className="account-name-form" onSubmit={e=>{e.preventDefault();void save(r.id,{displayName:name});}}>
+          {editing===r.id && !isViewer ? <form className="account-name-form" onSubmit={e=>{e.preventDefault();void save(r.id,{displayName:name});}}>
             <label htmlFor={`name-${r.id}`}>Account name</label><input autoFocus id={`name-${r.id}`} className="input" maxLength={80} value={name} onChange={e=>setName(e.target.value)}/>
             <div className="flex"><button className="btn primary" disabled={pending===r.id}>Save</button><button type="button" className="btn" onClick={()=>setEditing(null)}>Cancel</button></div>
-          </form> : <div className="account-card-footer"><Link href={`/accounts/${r.id}`}>View account <span aria-hidden="true">›</span></Link><button className="rename-account" onClick={()=>{setEditing(r.id);setName(r.displayName??"");setError("");}}>Edit name</button><button className="rename-account" style={{color:"#ff555e"}} disabled={pending===r.id} onClick={()=>void remove(r.id,title)}>Delete</button></div>}
+          </form> : <div className="account-card-footer"><Link href={`/accounts/${r.id}`}>View account <span aria-hidden="true">›</span></Link>{!isViewer && <><button className="rename-account" onClick={()=>{setEditing(r.id);setName(r.displayName??"");setError("");}}>Edit name</button><button className="rename-account" style={{color:"#ff555e"}} disabled={pending===r.id} onClick={()=>void remove(r.id,title)}>Delete</button></>}</div>}
         </article>;
       })}
 

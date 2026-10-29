@@ -10,6 +10,7 @@ import LineChart from "@/components/charts/LineChart";
 import StatusBadge from "@/components/ui/StatusBadge";
 import DataTable, { type Column } from "@/components/tables/DataTable";
 import { money, signedMoney, fmtDateTime, pct } from "@/lib/format";
+import { useCurrentUser } from "@/lib/client/useUser";
 import type { AccountDetailPayload, DetailRange, DetailTab, PositionRow, OrderRow } from "@/components/accounts/detailTypes";
 
 const TABS: { id: DetailTab; label: string }[] = [
@@ -24,6 +25,7 @@ const TABS: { id: DetailTab; label: string }[] = [
 
 export default function AccountDetailPage() {
   const router = useRouter();
+  const { isViewer } = useCurrentUser();
   const params = useParams<{ id: string }>();
   const id = params.id;
   const [range, setRange] = useState<DetailRange>("30d");
@@ -106,7 +108,7 @@ export default function AccountDetailPage() {
           <option value="1y">1 year</option>
         </select>
         <button className="btn sm" onClick={() => apiDownload("/api/export", { type: "positions", format: "csv", accountId: id })}>⬇ Positions</button>
-        <button className="btn danger sm" disabled={deleting} onClick={deleteAccount}>{deleting ? "Deleting…" : "Delete Account"}</button>
+        {!isViewer && <button className="btn danger sm" disabled={deleting} onClick={deleteAccount}>{deleting ? "Deleting…" : "Delete Account"}</button>}
       </div>
 
       <div className="stats">
