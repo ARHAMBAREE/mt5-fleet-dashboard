@@ -44,20 +44,23 @@ async function parseIncomingPayload(req: NextRequest): Promise<ExtractedInput> {
       if (rawText.length > 0) {
         const parsed = JSON.parse(rawText);
         if (parsed && typeof parsed === "object") {
-          rawKey =
-            rawKey ||
-            parsed.license_key ||
-            parsed.licenseKey ||
-            parsed.LicenseKey ||
-            parsed.key ||
-            "";
-          rawAccount =
-            rawAccount ||
+          const bodyKey =
+            parsed.license_key ??
+            parsed.licenseKey ??
+            parsed.LicenseKey ??
+            parsed.key;
+          if (!rawKey && bodyKey !== undefined && bodyKey !== null) {
+            rawKey = String(bodyKey);
+          }
+
+          const bodyAccount =
             parsed.account_number ??
             parsed.accountNumber ??
             parsed.AccountNumber ??
-            parsed.login ??
-            "";
+            parsed.login;
+          if (!rawAccount && bodyAccount !== undefined && bodyAccount !== null) {
+            rawAccount = String(bodyAccount);
+          }
         }
       }
     } catch {

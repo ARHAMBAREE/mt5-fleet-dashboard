@@ -19,3 +19,4 @@ CREATE TABLE IF NOT EXISTS `ea_licenses` (
 
 -- AddForeignKey (ignore if users table constraint already exists or FK disabled)
 ALTER TABLE `ea_licenses` ADD CONSTRAINT `ea_licenses_created_by_id_fkey` FOREIGN KEY (`created_by_id`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
