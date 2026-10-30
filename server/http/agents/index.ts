@@ -78,3 +78,28 @@ export const POST = withAuth({ minRole: "ADMIN", limit: { key: "pairing", limit:
     { status: 201 }
   );
 });
+
+/**
+ * DELETE /api/agents — bulk delete all REVOKED agents
+ */
+export const DELETE = withAuth(
+  { minRole: "ADMIN", limit: { key: "agents-write", limit: 60, windowSec: 60 } },
+  async (_req, ctx) => {
+    const fleetUserId = await getEffectiveFleetUserId(ctx.user);
+    const revokedAgents = await prisma.agent.findMany({
+      where: { userId: fleetUserId, status: "REVOKED" },
+      select: { id: true },
+    });
+    const revokedIds = revokedAgents.map((a) => a.id);
+    if (revokedIds.length > 0) {
+      await prisma.account.updateMany({
+        where: { agentId: { in: revokedIds } },
+        data: { agentId: null },
+      });
+      await prisma.agent.deleteMany({
+        where: { id: { in: revokedIds } },
+      });
+    }
+    return Response.json({ ok: true, count: revokedIds.length });
+  }
+);

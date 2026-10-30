@@ -1,1 +1,1 @@
-export { GET, POST } from "@/server/http/agents/index";
+export { GET, POST, DELETE } from "@/server/http/agents/index";

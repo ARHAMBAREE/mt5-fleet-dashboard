@@ -27,10 +27,23 @@ export const PATCH = withAuth<{ id: string }>(
 
 export const DELETE = withAuth<{ id: string }>(
   { minRole: "ADMIN", limit: { key: "agents-write", limit: 60, windowSec: 60 } },
-  async (_req, ctx) => {
+  async (req, ctx) => {
     const { id } = await ctx.params;
+    const url = new URL(req.url);
+    const permanent = url.searchParams.get("permanent") === "true";
     const fleetUserId = await getEffectiveFleetUserId(ctx.user);
+
+    const agent = await prisma.agent.findFirst({ where: { id, userId: fleetUserId } });
+    if (!agent) throw new ApiError(404, "NOT_FOUND", "Agent not found");
+
+    if (permanent || agent.status === "REVOKED") {
+      // Unlink any accounts first, then delete agent record
+      await prisma.account.updateMany({ where: { agentId: id }, data: { agentId: null } });
+      await prisma.agent.delete({ where: { id } });
+      return Response.json({ ok: true, deleted: true });
+    }
+
     await revokeAgent(fleetUserId, id);
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, revoked: true });
   }
 );

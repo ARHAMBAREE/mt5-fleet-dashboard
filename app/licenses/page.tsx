@@ -128,6 +128,23 @@ export default function LicensesPage() {
     }
   }
 
+  async function deleteAllRevokedLicenses() {
+    const revoked = items.filter((l) => !l.isActive);
+    if (revoked.length === 0) return;
+    if (!confirm(`Permanently delete all ${revoked.length} revoked license keys?`)) return;
+    setError("");
+    setSuccess("");
+    try {
+      for (const lic of revoked) {
+        await apiSend("DELETE", `/api/licenses/${lic.id}`);
+      }
+      setSuccess(`Deleted ${revoked.length} revoked license key(s).`);
+      licensesRes.refetch();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Failed to delete revoked licenses");
+    }
+  }
+
   function copyToClipboard(key: string) {
     navigator.clipboard.writeText(key);
     setCopiedKey(key);
@@ -146,14 +163,27 @@ export default function LicensesPage() {
           </p>
         </div>
         {isOwner && (
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setShowModal(true)}
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-          >
-            <span>+</span> Generate License
-          </button>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+            {items.filter((l) => !l.isActive).length > 0 && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ color: "var(--text-danger)" }}
+                onClick={deleteAllRevokedLicenses}
+                title="Permanently remove all revoked license keys"
+              >
+                🗑 Delete Revoked Keys ({items.filter((l) => !l.isActive).length})
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setShowModal(true)}
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <span>+</span> Generate License
+            </button>
+          </div>
         )}
       </div>
 

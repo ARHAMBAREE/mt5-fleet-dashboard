@@ -56,6 +56,27 @@ export default function AgentsPage() {
     }
   }
 
+  async function deleteAgent(id: string, name: string) {
+    if (!confirm(`Permanently remove revoked agent "${name}" from your dashboard?`)) return;
+    try {
+      await apiSend("DELETE", `/api/agents/${id}?permanent=true`);
+      agents.refetch();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Delete failed");
+    }
+  }
+
+  async function deleteAllRevoked() {
+    const count = agents.data?.agents.filter((a) => a.status === "REVOKED").length ?? 0;
+    if (!confirm(`Permanently delete all ${count} revoked agent installations?`)) return;
+    try {
+      await apiSend("DELETE", "/api/agents");
+      agents.refetch();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Delete all revoked failed");
+    }
+  }
+
   async function copyCode() {
     if (!newCode) return;
     try {
@@ -73,9 +94,23 @@ export default function AgentsPage() {
       <div className="page-head">
         <h2>MT5 Agents</h2>
         <span className="pill-count">{agents.data?.agents.filter((a) => a.status === "ACTIVE").length ?? 0} active</span>
+        {(agents.data?.agents.filter((a) => a.status === "REVOKED").length ?? 0) > 0 && (
+          <span className="pill-count" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444", borderColor: "rgba(239, 68, 68, 0.3)" }}>
+            {agents.data?.agents.filter((a) => a.status === "REVOKED").length} revoked
+          </span>
+        )}
         <span className="spacer" />
         {!isViewer && (
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {(agents.data?.agents.filter((a) => a.status === "REVOKED").length ?? 0) > 0 && (
+              <button
+                className="btn sm danger"
+                onClick={deleteAllRevoked}
+                title="Permanently remove all revoked agent installations"
+              >
+                🗑 Delete All Revoked ({agents.data?.agents.filter((a) => a.status === "REVOKED").length})
+              </button>
+            )}
             <a className="btn" href="/licenses">🔑 EA Licenses</a>
             <button className="btn primary" onClick={addAgent} disabled={busy}>
               {busy ? "Generating…" : "＋ Add Agent"}
@@ -128,6 +163,9 @@ export default function AgentsPage() {
                   <td className="right">
                     {a.status === "ACTIVE" && !isViewer && (
                       <button className="btn sm danger" onClick={() => revoke(a.id, a.name)}>Revoke</button>
+                    )}
+                    {a.status === "REVOKED" && !isViewer && (
+                      <button className="btn sm danger" onClick={() => deleteAgent(a.id, a.name)} title="Permanently delete this revoked agent">Delete</button>
                     )}
                   </td>
                 </tr>
