@@ -21,6 +21,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "icons": "node scripts/generate-icons.cjs",
+    "license:generate": "node scripts/generate-license.cjs",
     "ws": "node --env-file=.env --conditions=react-server --import tsx server/websocket/standalone.ts",
     "electron:compile": "tsc -p tsconfig.electron.json",
     "electron:dev": "npm run electron:compile && electron dist-electron/electron/main.js",

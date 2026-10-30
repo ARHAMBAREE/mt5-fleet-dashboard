@@ -40,6 +40,7 @@ model User {
   alertEvents    AlertEvent[]
   settings       Setting[]
   realtimeEvents RealtimeEvent[]
+  eaLicenses     EaLicense[]
 
   @@map("users")
 }
@@ -443,5 +444,30 @@ model RealtimeEvent {
   @@index([createdAt])
   @@map("realtime_events")
 }
+
+// ---------------------------------------------------------------------------
+// Expert Advisor Licenses
+// ---------------------------------------------------------------------------
+
+model EaLicense {
+  id             String    @id @default(uuid())
+  licenseKey     String    @unique @map("license_key")
+  accountNumber  BigInt?   @map("account_number")
+  isActive       Boolean   @default(true) @map("is_active")
+  expiresAt      DateTime? @map("expires_at")
+  lastVerifiedAt DateTime? @map("last_verified_at")
+  notes          String?   @map("notes")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  createdById    String?   @map("created_by_id")
+  createdBy      User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([accountNumber])
+  @@index([licenseKey, isActive])
+  @@map("ea_licenses")
+}
+
+
 
 

@@ -1,0 +1,16 @@
+RewriteEngine On
+RewriteBase /
+
+# Route /api/verify to api/verify.php
+RewriteRule ^api/verify/?$ api/verify.php [QSA,L]
+
+# Route /api/licenses/generate to api/generate.php
+RewriteRule ^api/licenses/generate/?$ api/generate.php [QSA,L]
+RewriteRule ^api/generate/?$ api/generate.php [QSA,L]
+
+# Block direct access to config.php or .sql files
+<FilesMatch "^(config\.php|.*\.sql)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+

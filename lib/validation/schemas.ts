@@ -96,3 +96,28 @@ export const fleetQuerySchema = z.object({
   sort: z.string().max(64).optional(), dir: z.enum(["asc", "desc"]).default("asc"),
   range: z.enum(["24h", "7d", "30d", "90d", "1y"]).default("30d"),
 });
+
+// ---------------------------------------------------------------------------
+// EA Licensing Schemas
+// ---------------------------------------------------------------------------
+
+export const verifyLicenseSchema = z.object({
+  licenseKey: z.string().min(1).max(64),
+  accountNumber: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]),
+});
+
+export const createLicenseSchema = z.object({
+  expiryDays: z.number().int().min(1).max(3650).optional().default(365),
+  expiryDate: z.string().datetime().optional(),
+  accountNumber: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).nullable().optional(),
+  notes: cleanOptional(200),
+  count: z.number().int().min(1).max(50).optional().default(1),
+});
+
+export const updateLicenseSchema = z.object({
+  isActive: z.boolean().optional(),
+  expiryDate: z.string().datetime().optional(),
+  accountNumber: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).nullable().optional(),
+  notes: cleanOptional(200),
+});
+

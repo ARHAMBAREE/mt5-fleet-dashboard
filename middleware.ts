@@ -15,6 +15,13 @@ function isPublic(pathname: string): boolean {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // MQL5 WebRequest public licensing endpoint — bypass CORS/session checks
+  if (pathname === "/api/verify") {
+    if (req.method === "OPTIONS") return new NextResponse(null, { status: 204 });
+    return NextResponse.next();
+  }
+
   if (pathname.startsWith("/api/")) {
     const origin = req.headers.get("origin");
     const allowed = [process.env.APP_URL, process.env.NEXT_PUBLIC_APP_URL, ...(process.env.ALLOWED_ORIGINS ?? "").split(",")].filter(Boolean).map(x => x!.trim().replace(/\/+$/, ""));

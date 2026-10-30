@@ -14,6 +14,7 @@ function ThemeIcon({kind}:{kind:string}) {
     accounts: <><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M3 13h5l2 3h4l2-3h5"/></>,
     alerts: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></>,
     positions: <path d="m2 13 5 0 3-10 4 18 3-8h5"/>,
+    licenses: <><circle cx="7.5" cy="15.5" r="4.5"/><path d="m21 3-9.5 9.5M15.5 7.5l3 3M18 5l2 2"/></>,
     lock: <><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V6a4 4 0 0 1 8 0v4M12 15v2"/></>,
     more: <><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></>
   };
@@ -29,6 +30,7 @@ export const NAV_ITEMS = [
   { href: "/analytics", label: "Analytics", icon: "∿" },
   { href: "/alerts", label: "Alerts", icon: "⚠" },
   { href: "/agents", label: "Agents", icon: "⚑" },
+  { href: "/licenses", label: "EA Licenses", icon: "⚿" },
   { href: "/settings", label: "Settings", icon: "⚙" },
 ];
 
