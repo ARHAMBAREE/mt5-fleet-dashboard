@@ -169,7 +169,10 @@ export default function SettingsPage() {
       )}
 
       {!isViewer && (
-        <a className="btn mb" href="/agents">MT5 Agents → Add Agent</a>
+        <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+          <a className="btn" href="/agents">MT5 Agents → Add Agent</a>
+          <a className="btn primary" href="/licenses">🔑 EA Licenses → Generate & Manage</a>
+        </div>
       )}
 
       {/* Role-Based User Management (Admin / Owner Only) */}

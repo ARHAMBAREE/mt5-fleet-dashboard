@@ -75,9 +75,12 @@ export default function AgentsPage() {
         <span className="pill-count">{agents.data?.agents.filter((a) => a.status === "ACTIVE").length ?? 0} active</span>
         <span className="spacer" />
         {!isViewer && (
-          <button className="btn primary" onClick={addAgent} disabled={busy}>
-            {busy ? "Generating…" : "＋ Add Agent"}
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <a className="btn" href="/licenses">🔑 EA Licenses</a>
+            <button className="btn primary" onClick={addAgent} disabled={busy}>
+              {busy ? "Generating…" : "＋ Add Agent"}
+            </button>
+          </div>
         )}
       </div>
 
