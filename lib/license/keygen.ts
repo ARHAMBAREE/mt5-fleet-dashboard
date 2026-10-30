@@ -64,3 +64,58 @@ export function serializeLicense<T extends { accountNumber: bigint | null }>(lic
   };
 }
 
+let isTableReady = false;
+
+/**
+ * Self-healing / Auto-bootstrap helper: automatically creates the `ea_licenses` table in MySQL/PostgreSQL
+ * if it doesn't exist yet on production, preventing 500 database errors without manual intervention.
+ */
+export async function ensureEaLicensesTable(prismaClient: { $executeRawUnsafe: (query: string) => Promise<unknown> }) {
+  if (isTableReady) return;
+  try {
+    // Primary: MySQL / MariaDB (standard for Hostinger)
+    await prismaClient.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS \`ea_licenses\` (
+        \`id\` VARCHAR(191) NOT NULL,
+        \`license_key\` VARCHAR(191) NOT NULL,
+        \`account_number\` BIGINT NULL,
+        \`is_active\` BOOLEAN NOT NULL DEFAULT true,
+        \`expires_at\` DATETIME(3) NULL,
+        \`last_verified_at\` DATETIME(3) NULL,
+        \`notes\` VARCHAR(191) NULL,
+        \`created_at\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+        \`updated_at\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+        \`created_by_id\` VARCHAR(191) NULL,
+        PRIMARY KEY (\`id\`),
+        UNIQUE INDEX \`ea_licenses_license_key_key\`(\`license_key\`),
+        INDEX \`ea_licenses_account_number_idx\`(\`account_number\`),
+        INDEX \`ea_licenses_license_key_is_active_idx\`(\`license_key\`, \`is_active\`)
+      ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    `);
+    isTableReady = true;
+  } catch (mysqlErr) {
+    try {
+      // Secondary fallback: PostgreSQL
+      await prismaClient.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "ea_licenses" (
+          "id" VARCHAR(191) NOT NULL,
+          "license_key" VARCHAR(191) NOT NULL,
+          "account_number" BIGINT NULL,
+          "is_active" BOOLEAN NOT NULL DEFAULT true,
+          "expires_at" TIMESTAMP(3) NULL,
+          "last_verified_at" TIMESTAMP(3) NULL,
+          "notes" VARCHAR(191) NULL,
+          "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "created_by_id" VARCHAR(191) NULL,
+          PRIMARY KEY ("id")
+        );
+      `);
+      isTableReady = true;
+    } catch {
+      // Table may already exist
+    }
+  }
+}
+
+

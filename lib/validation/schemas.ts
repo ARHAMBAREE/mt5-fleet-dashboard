@@ -107,17 +107,17 @@ export const verifyLicenseSchema = z.object({
 });
 
 export const createLicenseSchema = z.object({
-  expiryDays: z.number().int().min(1).max(3650).optional().default(365),
-  expiryDate: z.string().datetime().optional(),
+  expiryDays: z.number().int().min(0).max(3650).nullable().optional().default(365),
+  expiryDate: z.string().nullable().optional(),
   accountNumber: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).nullable().optional(),
-  notes: cleanOptional(200),
+  notes: z.string().max(255).nullable().optional(),
   count: z.number().int().min(1).max(50).optional().default(1),
 });
 
 export const updateLicenseSchema = z.object({
   isActive: z.boolean().optional(),
-  expiryDate: z.string().datetime().optional(),
+  expiryDate: z.string().nullable().optional(),
   accountNumber: z.union([z.number().int().positive(), z.string().regex(/^\d+$/)]).nullable().optional(),
-  notes: cleanOptional(200),
+  notes: z.string().max(255).nullable().optional(),
 });
 

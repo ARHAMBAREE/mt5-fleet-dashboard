@@ -4,6 +4,7 @@ import {
   formatLicenseKey,
   normalizeLicenseKey,
   parseAccountNumber,
+  ensureEaLicensesTable,
 } from "@/lib/license/keygen";
 
 export const dynamic = "force-dynamic";
@@ -98,6 +99,8 @@ export async function POST(req: NextRequest) {
 
     const rawKey = normalizeLicenseKey(licenseKey);
     const formattedKey = formatLicenseKey(licenseKey);
+
+    await ensureEaLicensesTable(prisma);
 
     // 1. Look up licenseKey in database
     const license = await prisma.eaLicense.findFirst({

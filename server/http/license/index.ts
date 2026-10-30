@@ -6,6 +6,7 @@ import {
   generateLicenseKey,
   parseAccountNumber,
   serializeLicense,
+  ensureEaLicensesTable,
 } from "@/lib/license/keygen";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ export const dynamic = "force-dynamic";
  * Accessible strictly to OWNER only.
  */
 export const GET = withAuth({ minRole: "OWNER" }, async (req) => {
+  await ensureEaLicensesTable(prisma);
   const url = new URL(req.url);
   const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
   const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get("pageSize") || "50", 10)));
@@ -73,6 +75,7 @@ export const GET = withAuth({ minRole: "OWNER" }, async (req) => {
  * Accessible strictly to logged-in OWNER only.
  */
 export const POST = withAuth({ minRole: "OWNER" }, async (req, ctx) => {
+  await ensureEaLicensesTable(prisma);
   const body = await readJson(req, createLicenseSchema);
 
   const count = body.count || 1;
@@ -87,7 +90,7 @@ export const POST = withAuth({ minRole: "OWNER" }, async (req, ctx) => {
     if (isNaN(expiry.getTime())) {
       throw new ApiError(400, "VALIDATION", "Invalid expiryDate format");
     }
-  } else if (body.expiryDays) {
+  } else if (body.expiryDays && body.expiryDays > 0) {
     expiry = new Date();
     expiry.setDate(expiry.getDate() + body.expiryDays);
   }

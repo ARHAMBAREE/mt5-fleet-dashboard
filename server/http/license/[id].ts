@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { withAuth, readJson, ApiError } from "@/lib/auth/guard";
 import { updateLicenseSchema } from "@/lib/validation/schemas";
 import { prisma } from "@/lib/database/prisma";
-import { parseAccountNumber, serializeLicense } from "@/lib/license/keygen";
+import { parseAccountNumber, serializeLicense, ensureEaLicensesTable } from "@/lib/license/keygen";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
  * Accessible strictly to OWNER only.
  */
 export const PATCH = withAuth<{ id: string }>({ minRole: "OWNER" }, async (req, ctx) => {
+  await ensureEaLicensesTable(prisma);
   const { id } = await ctx.params;
   const body = await readJson(req, updateLicenseSchema);
 
@@ -68,6 +69,7 @@ export const PATCH = withAuth<{ id: string }>({ minRole: "OWNER" }, async (req, 
  * Accessible strictly to OWNER only.
  */
 export const DELETE = withAuth<{ id: string }>({ minRole: "OWNER" }, async (req, ctx) => {
+  await ensureEaLicensesTable(prisma);
   const { id } = await ctx.params;
 
   const existing = await prisma.eaLicense.findUnique({ where: { id } });

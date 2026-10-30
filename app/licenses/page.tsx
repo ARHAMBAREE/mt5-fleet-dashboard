@@ -60,20 +60,17 @@ export default function LicensesPage() {
 
     try {
       const payload: {
-        expiryDays?: number;
-        expiryDate?: string;
+        expiryDays?: number | null;
+        expiryDate?: string | null;
         accountNumber?: string | null;
-        notes?: string;
+        notes?: string | null;
         count: number;
       } = {
-        count,
-        notes: notes.trim() || undefined,
+        count: count || 1,
+        notes: notes.trim() ? notes.trim() : null,
         accountNumber: customAccount.trim() ? customAccount.trim() : null,
+        expiryDays: expiryDays > 0 ? expiryDays : null,
       };
-
-      if (expiryDays > 0) {
-        payload.expiryDays = expiryDays;
-      }
 
       const res = await apiSend<{ ok: boolean; count: number; licenses: LicenseItem[] }>(
         "POST",
