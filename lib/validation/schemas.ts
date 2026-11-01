@@ -58,7 +58,7 @@ export const alertSchema = z.object({
 });
 
 export const settingsSchema = z.object({
-  key: z.enum(["retention", "notifications", "thresholds", "display", "desktop"]),
+  key: z.enum(["retention", "notifications", "thresholds", "display", "desktop", "accountOrder"]),
   value: z.record(z.string(), z.unknown()),
 });
 

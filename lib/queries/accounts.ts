@@ -57,52 +57,64 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
   const now = new Date();
   void prisma.account.deleteMany({ where: { login: "test-verify" } }).catch(() => {});
 
-  const accounts = await prisma.account.findMany({
-    where: {
-      userId,
-      login: { not: "test-verify" },
-      ...(filters.server ? { server: filters.server } : {}),
-      ...(filters.currency ? { currency: filters.currency.toUpperCase() === "USD" ? { in: ["USD", "USC"] } : filters.currency } : {}),
-      ...(filters.accountId ? { id: filters.accountId } : {}),
-      ...(filters.symbol ? { positions: { some: { symbol: filters.symbol } } } : {}),
-      ...(filters.mode ? { mode: filters.mode } : {}),
-      ...(filters.broker ? { broker: filters.broker } : {}),
-      ...(filters.agentId ? { agentId: filters.agentId } : {}),
-      ...(filters.q
-        ? {
-            OR: [
-              { displayName: { contains: filters.q } },
-              { login: { contains: filters.q } },
-              { broker: { contains: filters.q } },
-              { server: { contains: filters.q } },
-            ],
-          }
-        : {}),
-      ...(filters.groupId && filters.groupId !== "ALL"
-        ? { groupLinks: { some: { groupId: filters.groupId } } }
-        : {}),
-    },
-    include: {
-      agent: { select: { id: true, name: true, status: true } },
-      groupLinks: { include: { group: { select: { id: true, name: true, color: true } } } },
-    },
-  });
+  const [accounts, orderSetting] = await Promise.all([
+    prisma.account.findMany({
+      where: {
+        userId,
+        login: { not: "test-verify" },
+        ...(filters.server ? { server: filters.server } : {}),
+        ...(filters.currency ? { currency: filters.currency.toUpperCase() === "USD" ? { in: ["USD", "USC"] } : filters.currency } : {}),
+        ...(filters.accountId ? { id: filters.accountId } : {}),
+        ...(filters.symbol ? { positions: { some: { symbol: filters.symbol } } } : {}),
+        ...(filters.mode ? { mode: filters.mode } : {}),
+        ...(filters.broker ? { broker: filters.broker } : {}),
+        ...(filters.agentId ? { agentId: filters.agentId } : {}),
+        ...(filters.q
+          ? {
+              OR: [
+                { displayName: { contains: filters.q } },
+                { login: { contains: filters.q } },
+                { broker: { contains: filters.q } },
+                { server: { contains: filters.q } },
+              ],
+            }
+          : {}),
+        ...(filters.groupId && filters.groupId !== "ALL"
+          ? { groupLinks: { some: { groupId: filters.groupId } } }
+          : {}),
+      },
+      include: {
+        agent: { select: { id: true, name: true, status: true } },
+        groupLinks: { include: { group: { select: { id: true, name: true, color: true } } } },
+      },
+    }),
+    prisma.setting.findUnique({
+      where: { userId_key: { userId, key: "accountOrder" } },
+    }).catch(() => null),
+  ]);
 
   if (!accounts.length) return { rows: [], totals: emptyTotals };
   const ids = accounts.map((a) => a.id);
+
+  const rawOrder = (orderSetting?.value as { order?: unknown } | null)?.order;
+  const orderList: string[] = Array.isArray(rawOrder)
+    ? rawOrder.filter((x): x is string => typeof x === "string")
+    : [];
 
   const openRows = await prisma.position.groupBy({
     by: ["accountId"], where: { accountId: { in: ids } }, _count: { _all: true },
   });
   const openMap = new Map(openRows.map((r) => [r.accountId, r._count._all]));
 
-  const rows: AccountSummary[] = accounts.map((a) => {
+  const rows: AccountSummary[] = accounts.map((a, idx) => {
     const unit = accountMoneyUnit(a.currency);
     const floatingPl = (a.equity - a.balance - a.credit) * unit.factor;
     const dd = { peak: a.equityPeak, maxDdPct: a.maxDrawdownPct };
     const currentDd = dd && dd.peak > 0 ? Math.max(0, ((dd.peak - a.equity) / dd.peak) * 100) : 0;
     const revoked = a.agent?.status === "REVOKED";
     const lastBeat = revoked || !a.agentId ? null : a.lastHeartbeatAt;
+    const orderIdx = orderList.indexOf(a.id);
+    const sortOrder = orderIdx !== -1 ? orderIdx : (orderList.length > 0 ? 1000 + idx : 0);
     return {
       id: a.id,
       displayName: a.displayName, favorite: a.favorite,
@@ -134,6 +146,7 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
       agentId: a.agentId,
       agentName: a.agent ? (revoked ? `${a.agent.name} (revoked)` : a.agent.name) : null,
       groups: a.groupLinks.map((g) => g.group),
+      sortOrder,
       updatedAt: a.updatedAt.toISOString(),
     };
   });
@@ -174,7 +187,12 @@ export function sortRows(rows: AccountSummary[], sort: string, dir: "asc" | "des
   const mul = dir === "asc" ? 1 : -1;
   rows.sort((a, b) => {
     if (sort === "status") return mul * (STATUS_ORDER[a.eaStatus] - STATUS_ORDER[b.eaStatus]) || compareAccountIdentity(a,b);
-    if (sort === "account") return mul * compareAccountIdentity(a,b);
+    if (sort === "account") {
+      const orderA = a.sortOrder ?? 0;
+      const orderB = b.sortOrder ?? 0;
+      if (orderA !== orderB) return mul * (orderA - orderB);
+      return mul * compareAccountIdentity(a,b);
+    }
     if (sort === "lastSeen") {
       const av = a.lastHeartbeatAt ? Date.parse(a.lastHeartbeatAt) : 0;
       const bv = b.lastHeartbeatAt ? Date.parse(b.lastHeartbeatAt) : 0;

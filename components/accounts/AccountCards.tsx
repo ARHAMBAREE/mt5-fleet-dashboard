@@ -15,12 +15,29 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
   const [name,setName]=useState("");
   const [pending,setPending]=useState<string|null>(null);
   const [error,setError]=useState("");
+
   async function save(id:string,data:{displayName?:string;favorite?:boolean}) {
     setPending(id);setError("");
     try {await apiSend("PATCH",`/api/accounts/${id}`,data);if(data.displayName!==undefined)setEditing(null);onUpdated();}
     catch(e){setError(e instanceof Error?e.message:"Could not save account");}
     finally{setPending(null);}
   }
+
+  async function makeFirst(id: string) {
+    setPending(id);
+    setError("");
+    try {
+      const currentIds = rows.map((r) => r.id);
+      const newOrder = [id, ...currentIds.filter((x) => x !== id)];
+      await apiSend("PUT", "/api/settings", { key: "accountOrder", value: { order: newOrder } });
+      onUpdated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not reorder accounts");
+    } finally {
+      setPending(null);
+    }
+  }
+
   async function remove(id:string,title:string) {
     if(!confirm(`Delete account "${title}"? All snapshots, positions, orders, and historical data will be permanently removed.`)) return;
     setPending(id);setError("");
@@ -28,42 +45,167 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
     catch(e){setError(e instanceof Error?e.message:"Could not delete account");}
     finally{setPending(null);}
   }
-  const needle=search.trim().toLowerCase();
-  const visible=rows.filter(r=>[r.displayName,r.login,r.broker,r.server].some(s=>s?.toLowerCase().includes(needle)) && (!filter || (filter==="favorites"?r.favorite:r.eaStatus===filter))).sort((a,b)=>Number(b.favorite)-Number(a.favorite) || compareAccountIdentity(a,b));
-  return <section className="portfolio-accounts" aria-label="Account portfolio">
-    <div className="portfolio-filters">
-      <input className="input" aria-label="Search accounts" placeholder="Search accounts, brokers, logins…" value={search} onChange={e=>setSearch(e.target.value)}/>
-      <select className="select" aria-label="Filter accounts" value={filter} onChange={e=>setFilter(e.target.value)}>
-        <option value="">All accounts</option><option value="favorites">Favorites</option><option value="ONLINE">Connected</option><option value="WARNING">Connection warning</option><option value="OFFLINE">Offline</option>
-      </select>
-    </div>
-    {error && <p role="alert" className="form-error">{error}</p>}
-    <div className="account-card-grid">
-      {visible.map(r=>{
-        const title=r.displayName || `Account ${r.login}`;
-        const initials=r.displayName ? r.displayName.trim().slice(0,2).toUpperCase() : r.login.slice(-2);
-        return <article className="portfolio-account" key={r.id}>
-          <header className="account-card-head">
-            <span className="account-avatar" aria-hidden="true">{initials}</span>
-            <div className="account-identity"><Link href={`/accounts/${r.id}`} className="account-name">{title}</Link><div className="account-broker">#{r.login} · {r.broker}</div></div>
-            {!isViewer && <button className={`favorite-button ${r.favorite?"selected":""}`} aria-label={`${r.favorite?"Unfavorite":"Favorite"} ${title}`} aria-pressed={r.favorite} disabled={pending===r.id} onClick={()=>void save(r.id,{favorite:!r.favorite})}>{r.favorite?"★":"☆"}</button>}
-          </header>
-          <div className="account-card-status"><span><i className={`account-dot ${r.eaStatus.toLowerCase()}`}/>{r.eaStatus==="ONLINE"?"Connected":r.eaStatus==="WARNING"?"Connection warning":"Offline · last known values"}</span><span>{r.openPositions} open</span></div>
-          <dl className="account-metrics">
-            <div><dt>Equity</dt><dd>{money(r.equity,r.currency)}</dd></div>
-            <div><dt>Floating P&amp;L</dt><dd className={r.floatingPl<0?"neg":r.floatingPl>0?"pos":""}>{signedMoney(r.floatingPl,r.currency)}</dd></div>
-            <div><dt>Balance</dt><dd>{money(r.balance,r.currency)}</dd></div>
-            <div><dt>Today realized</dt><dd className={r.todayRealizedPl==null?"muted":r.todayRealizedPl<0?"neg":"pos"}>{r.todayRealizedPl==null?"Awaiting data":signedMoney(r.todayRealizedPl,r.currency)}</dd><span className="account-day">Broker day</span></div>
-            <div><dt>Month realized</dt><dd className={r.monthlyRealizedPl==null?"muted":r.monthlyRealizedPl<0?"neg":"pos"}>{r.monthlyRealizedPl==null?"Awaiting data":signedMoney(r.monthlyRealizedPl,r.currency)}</dd><span className="account-day">Broker month</span></div>
-          </dl>
-          {editing===r.id && !isViewer ? <form className="account-name-form" onSubmit={e=>{e.preventDefault();void save(r.id,{displayName:name});}}>
-            <label htmlFor={`name-${r.id}`}>Account name</label><input autoFocus id={`name-${r.id}`} className="input" maxLength={80} value={name} onChange={e=>setName(e.target.value)}/>
-            <div className="flex"><button className="btn primary" disabled={pending===r.id}>Save</button><button type="button" className="btn" onClick={()=>setEditing(null)}>Cancel</button></div>
-          </form> : <div className="account-card-footer"><Link href={`/accounts/${r.id}`}>View account <span aria-hidden="true">›</span></Link>{!isViewer && <><button className="rename-account" onClick={()=>{setEditing(r.id);setName(r.displayName??"");setError("");}}>Edit name</button><button className="rename-account" style={{color:"#ff555e"}} disabled={pending===r.id} onClick={()=>void remove(r.id,title)}>Delete</button></>}</div>}
-        </article>;
-      })}
 
-    </div>
-    {!visible.length&&<div className="empty">{rows.length?"No accounts match your search.":"No accounts yet. Pair an MT5 terminal to see it here."}</div>}
-  </section>;
+  const needle=search.trim().toLowerCase();
+  const visible = rows
+    .filter(
+      (r) =>
+        [r.displayName, r.login, r.broker, r.server].some((s) => s?.toLowerCase().includes(needle)) &&
+        (!filter || (filter === "favorites" ? r.favorite : r.eaStatus === filter))
+    )
+    .sort((a, b) => {
+      const orderA = a.sortOrder ?? 0;
+      const orderB = b.sortOrder ?? 0;
+      if (orderA !== orderB) return orderA - orderB;
+      return Number(b.favorite) - Number(a.favorite) || compareAccountIdentity(a, b);
+    });
+
+  return (
+    <section className="portfolio-accounts" aria-label="Account portfolio">
+      <div className="portfolio-filters">
+        <input
+          className="input"
+          aria-label="Search accounts"
+          placeholder="Search accounts, brokers, logins…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select
+          className="select"
+          aria-label="Filter accounts"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        >
+          <option value="">All accounts</option>
+          <option value="favorites">Favorites</option>
+          <option value="ONLINE">Connected</option>
+          <option value="WARNING">Connection warning</option>
+          <option value="OFFLINE">Offline</option>
+        </select>
+        {!isViewer && rows.length > 1 && (
+          <Link
+            href="/settings#account-order"
+            className="btn sm"
+            style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}
+            title="Reorganize accounts in Settings"
+          >
+            <span>⚙️</span>
+            <span>Reorganize</span>
+          </Link>
+        )}
+      </div>
+      {error && <p role="alert" className="form-error">{error}</p>}
+      <div className="account-card-grid">
+        {visible.map((r, index) => {
+          const title = r.displayName || `Account ${r.login}`;
+          const initials = r.displayName ? r.displayName.trim().slice(0, 2).toUpperCase() : r.login.slice(-2);
+          const isShowingFirst = index === 0 && rows.length > 1;
+
+          return (
+            <article className="portfolio-account" key={r.id}>
+              <header className="account-card-head">
+                <span className="account-avatar" aria-hidden="true">{initials}</span>
+                <div className="account-identity">
+                  <Link href={`/accounts/${r.id}`} className="account-name">{title}</Link>
+                  <div className="account-broker">#{r.login} · {r.broker}</div>
+                </div>
+                {!isViewer && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {isShowingFirst && (
+                      <span
+                        title="This account is set to show first"
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          background: "rgba(59, 130, 246, 0.2)",
+                          color: "#60a5fa",
+                          border: "1px solid rgba(96, 165, 250, 0.3)",
+                          letterSpacing: "0.5px",
+                        }}
+                      >
+                        ★ #1
+                      </span>
+                    )}
+                    <button
+                      className={`favorite-button ${r.favorite ? "selected" : ""}`}
+                      aria-label={`${r.favorite ? "Unfavorite" : "Favorite"} ${title}`}
+                      aria-pressed={r.favorite}
+                      disabled={pending === r.id}
+                      onClick={() => void save(r.id, { favorite: !r.favorite })}
+                    >
+                      {r.favorite ? "★" : "☆"}
+                    </button>
+                  </div>
+                )}
+              </header>
+              <div className="account-card-status">
+                <span>
+                  <i className={`account-dot ${r.eaStatus.toLowerCase()}`} />
+                  {r.eaStatus === "ONLINE" ? "Connected" : r.eaStatus === "WARNING" ? "Connection warning" : "Offline · last known values"}
+                </span>
+                <span>{r.openPositions} open</span>
+              </div>
+              <dl className="account-metrics">
+                <div><dt>Equity</dt><dd>{money(r.equity, r.currency)}</dd></div>
+                <div><dt>Floating P&amp;L</dt><dd className={r.floatingPl < 0 ? "neg" : r.floatingPl > 0 ? "pos" : ""}>{signedMoney(r.floatingPl, r.currency)}</dd></div>
+                <div><dt>Balance</dt><dd>{money(r.balance, r.currency)}</dd></div>
+                <div><dt>Today realized</dt><dd className={r.todayRealizedPl == null ? "muted" : r.todayRealizedPl < 0 ? "neg" : "pos"}>{r.todayRealizedPl == null ? "Awaiting data" : signedMoney(r.todayRealizedPl, r.currency)}</dd><span className="account-day">Broker day</span></div>
+                <div><dt>Month realized</dt><dd className={r.monthlyRealizedPl == null ? "muted" : r.monthlyRealizedPl < 0 ? "neg" : "pos"}>{r.monthlyRealizedPl == null ? "Awaiting data" : signedMoney(r.monthlyRealizedPl, r.currency)}</dd><span className="account-day">Broker month</span></div>
+              </dl>
+              {editing === r.id && !isViewer ? (
+                <form className="account-name-form" onSubmit={(e) => { e.preventDefault(); void save(r.id, { displayName: name }); }}>
+                  <label htmlFor={`name-${r.id}`}>Account name</label>
+                  <input autoFocus id={`name-${r.id}`} className="input" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+                  <div className="flex">
+                    <button className="btn primary" disabled={pending === r.id}>Save</button>
+                    <button type="button" className="btn" onClick={() => setEditing(null)}>Cancel</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="account-card-footer">
+                  <Link href={`/accounts/${r.id}`}>View account <span aria-hidden="true">›</span></Link>
+                  {!isViewer && (
+                    <>
+                      {!isShowingFirst && rows.length > 1 && (
+                        <button
+                          className="rename-account"
+                          style={{ color: "#60a5fa" }}
+                          title="Show this account first"
+                          disabled={pending === r.id}
+                          onClick={() => void makeFirst(r.id)}
+                        >
+                          ⭐ Show first
+                        </button>
+                      )}
+                      <button
+                        className="rename-account"
+                        onClick={() => {
+                          setEditing(r.id);
+                          setName(r.displayName ?? "");
+                          setError("");
+                        }}
+                      >
+                        Edit name
+                      </button>
+                      <button
+                        className="rename-account"
+                        style={{ color: "#ff555e" }}
+                        disabled={pending === r.id}
+                        onClick={() => void remove(r.id, title)}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+      {!visible.length && <div className="empty">{rows.length ? "No accounts match your search." : "No accounts yet. Pair an MT5 terminal to see it here."}</div>}
+    </section>
+  );
 }

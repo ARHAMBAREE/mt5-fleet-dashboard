@@ -95,6 +95,7 @@ export const accountSummarySchema = z.object({
   agentId: z.string().nullable(),
   agentName: z.string().nullable(),
   groups: z.array(z.object({ id: z.string(), name: z.string(), color: z.string() })),
+  sortOrder: z.number().optional().default(0),
   updatedAt: z.string(),
 });
 export type AccountSummary = z.infer<typeof accountSummarySchema>;

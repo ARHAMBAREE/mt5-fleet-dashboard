@@ -6,8 +6,9 @@ import { useResource } from "@/lib/client/useResource";
 import { apiGet, apiSend, ApiClientError } from "@/lib/client/api";
 import { useRealtimeStatus } from "@/lib/realtime/hooks";
 import { useCurrentUser } from "@/lib/client/useUser";
-import { RETENTION_OPTIONS, type RetentionOption, type Role } from "@/shared/types";
-import { fmtDateTime } from "@/lib/format";
+import { RETENTION_OPTIONS, type RetentionOption, type Role, type AccountSummary } from "@/shared/types";
+import { fmtDateTime, money } from "@/lib/format";
+import { compareAccountIdentity } from "@/shared/account-order";
 
 interface SettingsPayload {
   settings: {
@@ -51,6 +52,108 @@ export default function SettingsPage() {
   const [newName, setNewName] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState<"VIEWER" | "ADMIN">("VIEWER");
+
+  // Account ordering state
+  const [orderedAccounts, setOrderedAccounts] = useState<AccountSummary[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [orderSaving, setOrderSaving] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState("");
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const loadAccounts = useCallback(async () => {
+    setAccountsLoading(true);
+    try {
+      const res = await apiGet<{ rows: AccountSummary[] }>("/api/accounts");
+      if (res && Array.isArray(res.rows)) {
+        setOrderedAccounts(res.rows);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setAccountsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadAccounts();
+  }, [loadAccounts]);
+
+  async function persistOrder(order: string[], successMsg: string) {
+    if (isViewer) return;
+    setOrderSaving(true);
+    setOrderSuccess("");
+    setError("");
+    try {
+      await apiSend("PUT", "/api/settings", {
+        key: "accountOrder",
+        value: { order },
+      });
+      setOrderSuccess(successMsg);
+      setTimeout(() => setOrderSuccess(""), 4000);
+      void loadAccounts();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Failed to save account order");
+    } finally {
+      setOrderSaving(false);
+    }
+  }
+
+  async function handleShowFirst(accountId: string) {
+    const target = orderedAccounts.find((a) => a.id === accountId);
+    if (!target) return;
+    const next = [target, ...orderedAccounts.filter((a) => a.id !== accountId)];
+    setOrderedAccounts(next);
+    await persistOrder(next.map((a) => a.id), `Account #${target.login} is now set to show first!`);
+  }
+
+  async function handleMoveUp(index: number) {
+    if (index <= 0) return;
+    const next = [...orderedAccounts];
+    const temp = next[index];
+    next[index] = next[index - 1];
+    next[index - 1] = temp;
+    setOrderedAccounts(next);
+    await persistOrder(next.map((a) => a.id), `Moved ${temp.displayName || `#${temp.login}`} up`);
+  }
+
+  async function handleMoveDown(index: number) {
+    if (index >= orderedAccounts.length - 1) return;
+    const next = [...orderedAccounts];
+    const temp = next[index];
+    next[index] = next[index + 1];
+    next[index + 1] = temp;
+    setOrderedAccounts(next);
+    await persistOrder(next.map((a) => a.id), `Moved ${temp.displayName || `#${temp.login}`} down`);
+  }
+
+  async function handleResetOrder() {
+    if (isViewer) return;
+    if (!confirm("Reset accounts to default order (by MT5 Login)?")) return;
+    const next = [...orderedAccounts].sort(compareAccountIdentity);
+    setOrderedAccounts(next);
+    await persistOrder(next.map((a) => a.id), "Account order reset to default");
+  }
+
+  function handleDragStart(index: number) {
+    setDraggedIndex(index);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
+  async function handleDrop(targetIndex: number) {
+    if (draggedIndex === null || draggedIndex === targetIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+    const next = [...orderedAccounts];
+    const [moved] = next.splice(draggedIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    setDraggedIndex(null);
+    setOrderedAccounts(next);
+    await persistOrder(next.map((a) => a.id), `Reordered ${moved.displayName || `#${moved.login}`}`);
+  }
 
   const settings = useResource<SettingsPayload>(() => apiGet("/api/settings"), []);
 
@@ -174,6 +277,197 @@ export default function SettingsPage() {
           <a className="btn primary" href="/licenses">🔑 EA Licenses → Generate & Manage</a>
         </div>
       )}
+
+      {/* Account Card Order & Priority */}
+      <div id="account-order" className="card mb" style={{ borderColor: "rgba(59, 130, 246, 0.3)" }}>
+        <div className="card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span>📊 MT5 Account Card Order &amp; Priority</span>
+            {orderSaving && <span className="small muted">(Saving…)</span>}
+          </div>
+          {orderedAccounts.length > 1 && !isViewer && (
+            <button
+              type="button"
+              className="btn sm"
+              style={{ fontSize: 12 }}
+              onClick={handleResetOrder}
+              disabled={orderSaving}
+            >
+              ↺ Reset to Default Order
+            </button>
+          )}
+        </div>
+
+        <div className="small muted mb">
+          Reorganize which MT5 account card appears first on your Dashboard and Accounts portfolio. Click <strong>⭐ Show First</strong> to promote any account to the #1 spot immediately, or use the <strong>▲ / ▼</strong> arrows (or drag and drop) to fine-tune your card order.
+        </div>
+
+        {orderSuccess && <div className="form-ok mb">{orderSuccess}</div>}
+
+        {accountsLoading && orderedAccounts.length === 0 ? (
+          <div className="small muted" style={{ padding: 16 }}>Loading accounts…</div>
+        ) : orderedAccounts.length === 0 ? (
+          <div className="small muted" style={{ padding: 16, background: "rgba(255, 255, 255, 0.02)", borderRadius: 8 }}>
+            No MT5 accounts connected yet. Pair an MT5 terminal via <a href="/agents" style={{ color: "#818cf8" }}>MT5 Agents</a> to customize display priority.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {orderedAccounts.map((acc, index) => {
+              const isFirst = index === 0;
+              const title = acc.displayName || `Account ${acc.login}`;
+              const initials = acc.displayName ? acc.displayName.trim().slice(0, 2).toUpperCase() : acc.login.slice(-2);
+
+              return (
+                <div
+                  key={acc.id}
+                  draggable={!isViewer}
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={handleDragOver}
+                  onDrop={() => void handleDrop(index)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    background: isFirst
+                      ? "rgba(59, 130, 246, 0.08)"
+                      : "rgba(255, 255, 255, 0.03)",
+                    border: isFirst
+                      ? "1px solid rgba(59, 130, 246, 0.4)"
+                      : "1px solid rgba(255, 255, 255, 0.06)",
+                    cursor: !isViewer ? "grab" : "default",
+                    opacity: draggedIndex === index ? 0.4 : 1,
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  {/* Left: Position badge + drag handle + Avatar + Info */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
+                    {!isViewer && (
+                      <span
+                        title="Drag to reorder"
+                        style={{
+                          fontSize: 16,
+                          color: "#64748b",
+                          userSelect: "none",
+                          cursor: "grab",
+                        }}
+                      >
+                        ⋮⋮
+                      </span>
+                    )}
+
+                    <div
+                      style={{
+                        minWidth: 32,
+                        height: 28,
+                        borderRadius: 6,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        background: isFirst ? "#2563eb" : "rgba(255, 255, 255, 0.08)",
+                        color: isFirst ? "#fff" : "#94a3b8",
+                      }}
+                    >
+                      #{index + 1}
+                    </div>
+
+                    <div
+                      className="account-avatar"
+                      style={{ width: 34, height: 34, minWidth: 34, fontSize: 13 }}
+                      aria-hidden="true"
+                    >
+                      {initials}
+                    </div>
+
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span className="bold" style={{ fontSize: 14 }}>{title}</span>
+                        {isFirst && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              padding: "2px 6px",
+                              borderRadius: 4,
+                              background: "rgba(34, 197, 94, 0.2)",
+                              color: "#4ade80",
+                              border: "1px solid rgba(74, 222, 128, 0.3)",
+                            }}
+                          >
+                            ★ SHOWING FIRST
+                          </span>
+                        )}
+                        <span className={`account-dot ${acc.eaStatus.toLowerCase()}`} />
+                        <span className="small muted" style={{ fontSize: 11 }}>
+                          {acc.eaStatus === "ONLINE" ? "Connected" : acc.eaStatus === "WARNING" ? "Warning" : "Offline"}
+                        </span>
+                      </div>
+                      <div className="small muted" style={{ fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        #{acc.login} · {acc.broker} ({acc.server}) · Equity: {money(acc.equity, acc.currency)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Actions */}
+                  {!isViewer && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                      {!isFirst ? (
+                        <button
+                          type="button"
+                          className="btn sm primary"
+                          style={{ fontSize: 12, height: 32 }}
+                          title="Make this account show first"
+                          disabled={orderSaving}
+                          onClick={() => void handleShowFirst(acc.id)}
+                        >
+                          ⭐ Show First
+                        </button>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "#60a5fa",
+                            padding: "4px 8px",
+                          }}
+                        >
+                          #1 on Dashboard
+                        </span>
+                      )}
+
+                      <button
+                        type="button"
+                        className="btn sm"
+                        style={{ width: 32, height: 32, padding: 0, fontSize: 12 }}
+                        title="Move up"
+                        disabled={orderSaving || index === 0}
+                        onClick={() => void handleMoveUp(index)}
+                      >
+                        ▲
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn sm"
+                        style={{ width: 32, height: 32, padding: 0, fontSize: 12 }}
+                        title="Move down"
+                        disabled={orderSaving || index === orderedAccounts.length - 1}
+                        onClick={() => void handleMoveDown(index)}
+                      >
+                        ▼
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Role-Based User Management (Admin / Owner Only) */}
       {!isViewer && (
