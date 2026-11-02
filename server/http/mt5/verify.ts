@@ -6,6 +6,7 @@ import {
   parseAccountLogin,
   checkFleetRateLimit,
 } from "@/lib/license/fleet-keygen";
+import { formatLicenseKey, normalizeLicenseKey } from "@/lib/license/keygen";
 
 export const dynamic = "force-dynamic";
 
@@ -130,17 +131,126 @@ export async function handleVerify(req: NextRequest) {
   // 4. Atomic database verification using Prisma transaction to prevent race conditions
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const record = await tx.mt5FleetLicense.findUnique({
+      let record = await tx.mt5FleetLicense.findUnique({
         where: { licenseKey },
       });
 
-      // Key not found
+      // Key not found in mt5_fleet_licenses -> Universal check in ea_licenses
       if (!record) {
+        const rawKey = normalizeLicenseKey(licenseKey);
+        const formattedKey = formatLicenseKey(licenseKey);
+
+        const eaRecord = await tx.eaLicense.findFirst({
+          where: {
+            OR: [{ licenseKey }, { licenseKey: formattedKey }, { licenseKey: rawKey }],
+          },
+        });
+
+        if (!eaRecord) {
+          return {
+            valid: false,
+            success: false,
+            status: "invalid",
+            message: "License key does not exist",
+          };
+        }
+
+        // Check revoked
+        if (!eaRecord.isActive) {
+          return {
+            valid: false,
+            success: false,
+            status: "invalid",
+            message: "License key has been revoked by administrator",
+          };
+        }
+
+        // Check expired
+        if (eaRecord.expiresAt && eaRecord.expiresAt.getTime() < now.getTime()) {
+          return {
+            valid: false,
+            success: false,
+            status: "expired",
+            message: "License key has expired",
+          };
+        }
+
+        // First use auto-bind on eaRecord
+        if (eaRecord.accountNumber === null) {
+          await tx.eaLicense.update({
+            where: { id: eaRecord.id },
+            data: { accountNumber: accountLogin, lastVerifiedAt: now },
+          });
+
+          await tx.mt5FleetLicense.create({
+            data: {
+              licenseKey: eaRecord.licenseKey,
+              boundAccountLogin: accountLogin,
+              boundAccountServer: accountServer,
+              boundAt: now,
+              status: "bound",
+              lastCheckInAt: now,
+              lastSymbol: symbol,
+              lastIp: clientIp,
+              checkInCount: 1,
+              expiresAt: eaRecord.expiresAt,
+            },
+          }).catch(() => {});
+
+          return {
+            valid: true,
+            success: true,
+            status: "bound",
+            account_login: Number(accountLogin),
+            message: `License bound to MT5 account ${accountLogin}`,
+          };
+        }
+
+        // Account mismatch
+        if (eaRecord.accountNumber !== accountLogin) {
+          return {
+            valid: false,
+            success: false,
+            status: "locked",
+            message: `License key is locked to another MT5 account (${eaRecord.accountNumber.toString()})`,
+          };
+        }
+
+        // Returning match
+        await tx.eaLicense.update({
+          where: { id: eaRecord.id },
+          data: { lastVerifiedAt: now },
+        });
+
+        await tx.mt5FleetLicense.upsert({
+          where: { licenseKey: eaRecord.licenseKey },
+          create: {
+            licenseKey: eaRecord.licenseKey,
+            boundAccountLogin: accountLogin,
+            boundAccountServer: accountServer,
+            boundAt: now,
+            status: "active",
+            lastCheckInAt: now,
+            lastSymbol: symbol,
+            lastIp: clientIp,
+            checkInCount: 1,
+            expiresAt: eaRecord.expiresAt,
+          },
+          update: {
+            status: "active",
+            lastCheckInAt: now,
+            lastSymbol: symbol,
+            lastIp: clientIp,
+            checkInCount: { increment: 1 },
+          },
+        }).catch(() => {});
+
         return {
-          valid: false,
-          success: false,
-          status: "invalid",
-          message: "License key does not exist",
+          valid: true,
+          success: true,
+          status: "active",
+          account_login: Number(accountLogin),
+          message: "License verified",
         };
       }
 
@@ -186,6 +296,22 @@ export async function handleVerify(req: NextRequest) {
           },
         });
 
+        // Sync binding to ea_licenses if exists
+        await tx.eaLicense.updateMany({
+          where: {
+            OR: [
+              { licenseKey: record.licenseKey },
+              { licenseKey: formatLicenseKey(record.licenseKey) },
+              { licenseKey: normalizeLicenseKey(record.licenseKey) },
+            ],
+            accountNumber: null,
+          },
+          data: {
+            accountNumber: accountLogin,
+            lastVerifiedAt: now,
+          },
+        }).catch(() => {});
+
         return {
           valid: true,
           success: true,
@@ -217,6 +343,17 @@ export async function handleVerify(req: NextRequest) {
           ...(accountServer ? { boundAccountServer: accountServer } : {}),
         },
       });
+
+      await tx.eaLicense.updateMany({
+        where: {
+          OR: [
+            { licenseKey: record.licenseKey },
+            { licenseKey: formatLicenseKey(record.licenseKey) },
+            { licenseKey: normalizeLicenseKey(record.licenseKey) },
+          ],
+        },
+        data: { lastVerifiedAt: now },
+      }).catch(() => {});
 
       return {
         valid: true,
@@ -257,3 +394,4 @@ export async function OPTIONS() {
     },
   });
 }
+

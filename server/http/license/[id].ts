@@ -61,6 +61,34 @@ export const PATCH = withAuth<{ id: string }>({ minRole: "OWNER" }, async (req, 
     data,
   });
 
+  // Synchronize changes to mt5_fleet_licenses for universal license support
+  const fleetUpdates: Record<string, unknown> = {};
+  if (data.isActive !== undefined) {
+    fleetUpdates.status = data.isActive
+      ? (updated.accountNumber ? "bound" : "unclaimed")
+      : "revoked";
+  }
+  if (data.accountNumber !== undefined) {
+    fleetUpdates.boundAccountLogin = data.accountNumber;
+    if (data.accountNumber === null) {
+      fleetUpdates.boundAccountServer = null;
+      fleetUpdates.boundAt = null;
+      fleetUpdates.status = "unclaimed";
+    } else {
+      fleetUpdates.status = "bound";
+    }
+  }
+  if (data.expiresAt !== undefined) {
+    fleetUpdates.expiresAt = data.expiresAt;
+  }
+
+  if (Object.keys(fleetUpdates).length > 0) {
+    await prisma.mt5FleetLicense.updateMany({
+      where: { licenseKey: existing.licenseKey },
+      data: fleetUpdates,
+    }).catch(() => {});
+  }
+
   return NextResponse.json({ ok: true, license: serializeLicense(updated) });
 });
 
@@ -78,6 +106,10 @@ export const DELETE = withAuth<{ id: string }>({ minRole: "OWNER" }, async (req,
   }
 
   await prisma.eaLicense.delete({ where: { id } });
+
+  await prisma.mt5FleetLicense.deleteMany({
+    where: { licenseKey: existing.licenseKey },
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true, message: "License deleted" });
 });

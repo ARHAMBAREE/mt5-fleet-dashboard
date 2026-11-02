@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/database/prisma";
 import { ensureMt5FleetLicensesTable, sanitizeMql5Payload } from "@/lib/license/fleet-keygen";
+import { formatLicenseKey, normalizeLicenseKey } from "@/lib/license/keygen";
 import { getSessionUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -71,32 +72,54 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const existing = await prisma.mt5FleetLicense.findUnique({
-      where: { licenseKey },
+    const rawKey = normalizeLicenseKey(licenseKey);
+    const formattedKey = formatLicenseKey(licenseKey);
+
+    const existing = await prisma.mt5FleetLicense.findFirst({
+      where: {
+        OR: [{ licenseKey }, { licenseKey: formattedKey }, { licenseKey: rawKey }],
+      },
     });
 
-    if (!existing) {
+    const eaExisting = await prisma.eaLicense.findFirst({
+      where: {
+        OR: [{ licenseKey }, { licenseKey: formattedKey }, { licenseKey: rawKey }],
+      },
+    });
+
+    if (!existing && !eaExisting) {
       return NextResponse.json(
         { success: false, message: `License key "${licenseKey}" does not exist` },
         { status: 404 }
       );
     }
 
-    const updated = await prisma.mt5FleetLicense.update({
-      where: { licenseKey },
-      data: {
-        boundAccountLogin: null,
-        boundAccountServer: null,
-        boundAt: null,
-        status: "unclaimed",
-      },
-    });
+    if (existing) {
+      await prisma.mt5FleetLicense.update({
+        where: { id: existing.id },
+        data: {
+          boundAccountLogin: null,
+          boundAccountServer: null,
+          boundAt: null,
+          status: "unclaimed",
+        },
+      });
+    }
+
+    if (eaExisting) {
+      await prisma.eaLicense.update({
+        where: { id: eaExisting.id },
+        data: {
+          accountNumber: null,
+        },
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      message: `License "${licenseKey}" unbound successfully`,
-      license_key: updated.licenseKey,
-      status: updated.status,
+      message: `License "${licenseKey}" unbound successfully across both bots`,
+      license_key: licenseKey,
+      status: "unclaimed",
     });
   } catch (err) {
     console.error("[POST /api/mt5/admin/unbind] error:", err);

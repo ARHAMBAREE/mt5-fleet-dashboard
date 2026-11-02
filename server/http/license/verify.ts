@@ -102,19 +102,96 @@ export async function POST(req: NextRequest) {
 
     await ensureEaLicensesTable(prisma);
 
-    // 1. Look up licenseKey in database
+    // 1. Look up licenseKey in database (ea_licenses)
     const license = await prisma.eaLicense.findFirst({
       where: {
-        OR: [{ licenseKey: formattedKey }, { licenseKey: rawKey }],
+        OR: [{ licenseKey: formattedKey }, { licenseKey: rawKey }, { licenseKey }],
       },
     });
 
     if (!license) {
+      // Universal Key Check: look up in mt5_fleet_licenses
+      const fleetRecord = await prisma.mt5FleetLicense.findFirst({
+        where: {
+          OR: [{ licenseKey: formattedKey }, { licenseKey: rawKey }, { licenseKey }],
+        },
+      });
+
+      if (!fleetRecord) {
+        return NextResponse.json(
+          {
+            status: "error",
+            valid: false,
+            error: "Invalid license key",
+          },
+          { status: 200 }
+        );
+      }
+
+      const now = new Date();
+      const isFleetExpired = fleetRecord.expiresAt !== null && new Date(fleetRecord.expiresAt) < now;
+
+      if (fleetRecord.status === "revoked" || isFleetExpired) {
+        return NextResponse.json(
+          {
+            status: "error",
+            valid: false,
+            error: "License is expired or revoked",
+          },
+          { status: 200 }
+        );
+      }
+
+      // First-time use in Bot 1: boundAccountLogin is NULL -> auto-bind
+      if (fleetRecord.boundAccountLogin === null) {
+        await prisma.mt5FleetLicense.update({
+          where: { id: fleetRecord.id },
+          data: {
+            boundAccountLogin: accountNumber,
+            boundAt: now,
+            status: "bound",
+            lastCheckInAt: now,
+            checkInCount: { increment: 1 },
+          },
+        });
+
+        return NextResponse.json(
+          {
+            status: "success",
+            valid: true,
+            message: "License active",
+          },
+          { status: 200 }
+        );
+      }
+
+      // Bound account mismatch -> reject
+      if (fleetRecord.boundAccountLogin !== accountNumber) {
+        return NextResponse.json(
+          {
+            status: "error",
+            valid: false,
+            error: "License key is already locked to another MT5 account",
+          },
+          { status: 200 }
+        );
+      }
+
+      // Valid match -> update check-in
+      await prisma.mt5FleetLicense.update({
+        where: { id: fleetRecord.id },
+        data: {
+          status: "active",
+          lastCheckInAt: now,
+          checkInCount: { increment: 1 },
+        },
+      });
+
       return NextResponse.json(
         {
-          status: "error",
-          valid: false,
-          error: "Invalid license key",
+          status: "success",
+          valid: true,
+          message: "License active",
         },
         { status: 200 }
       );
@@ -165,6 +242,20 @@ export async function POST(req: NextRequest) {
         }
       }
 
+      // Sync binding to mt5_fleet_licenses if corresponding record exists
+      await prisma.mt5FleetLicense.updateMany({
+        where: {
+          OR: [{ licenseKey: license.licenseKey }, { licenseKey: rawKey }, { licenseKey: formattedKey }],
+          boundAccountLogin: null,
+        },
+        data: {
+          boundAccountLogin: accountNumber,
+          boundAt: now,
+          status: "bound",
+          lastCheckInAt: now,
+        },
+      }).catch(() => {});
+
       return NextResponse.json(
         {
           status: "success",
@@ -192,6 +283,17 @@ export async function POST(req: NextRequest) {
       where: { id: license.id },
       data: { lastVerifiedAt: now },
     });
+
+    await prisma.mt5FleetLicense.updateMany({
+      where: {
+        OR: [{ licenseKey: license.licenseKey }, { licenseKey: rawKey }, { licenseKey: formattedKey }],
+      },
+      data: {
+        lastCheckInAt: now,
+        status: "active",
+        checkInCount: { increment: 1 },
+      },
+    }).catch(() => {});
 
     return NextResponse.json(
       {

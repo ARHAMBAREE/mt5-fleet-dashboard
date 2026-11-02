@@ -127,6 +127,16 @@ export const POST = withAuth({ minRole: "OWNER" }, async (req, ctx) => {
       },
     });
 
+    // Also register in mt5_fleet_licenses so the key works universally for Bot 2 immediately
+    await prisma.mt5FleetLicense.create({
+      data: {
+        licenseKey: key,
+        status: parsedAccount ? "bound" : "unclaimed",
+        boundAccountLogin: parsedAccount,
+        expiresAt: expiry,
+      },
+    }).catch(() => {});
+
     createdLicenses.push(serializeLicense(license));
   }
 

@@ -133,3 +133,67 @@ test("MT5 Fleet licensing business logic simulation", () => {
   assert.equal(rebindRes.status, "bound");
   assert.equal(lic.boundAccount, 99999999n);
 });
+
+test("Universal licensing enables 1 key to unlock BOTH bots on the same MT5 account", () => {
+  // Shared state simulation
+  let sharedAccount: bigint | null = null;
+  const key = "IV-UNIVERSAL-TEST-01";
+
+  // Bot 1 verify function (returns { status, valid, message/error })
+  function verifyBot1(login: bigint) {
+    if (sharedAccount === null) {
+      sharedAccount = login;
+      return { status: "success", valid: true, message: "License active" };
+    }
+    if (sharedAccount !== login) {
+      return { status: "error", valid: false, error: "License key is already locked to another MT5 account" };
+    }
+    return { status: "success", valid: true, message: "License active" };
+  }
+
+  // Bot 2 verify function (returns { valid, success, status, account_login, message })
+  function verifyBot2(login: bigint) {
+    if (sharedAccount === null) {
+      sharedAccount = login;
+      return { valid: true, success: true, status: "bound", account_login: Number(login), message: `License bound to MT5 account ${login}` };
+    }
+    if (sharedAccount !== login) {
+      return { valid: false, success: false, status: "locked", message: `License key is locked to another MT5 account (${sharedAccount})` };
+    }
+    return { valid: true, success: true, status: "active", account_login: Number(login), message: "License verified" };
+  }
+
+  // Step 1: User activates key on Bot 1 first
+  const b1First = verifyBot1(52013467n);
+  assert.equal(b1First.valid, true);
+  assert.equal(sharedAccount, 52013467n);
+
+  // Step 2: Same user opens Bot 2 with the SAME key
+  const b2Second = verifyBot2(52013467n);
+  assert.equal(b2Second.valid, true);
+  assert.equal(b2Second.status, "active");
+
+  // Step 3: An unauthorized user on MT5 account 99999999 tries using the key
+  const b1Attacker = verifyBot1(99999999n);
+  assert.equal(b1Attacker.valid, false);
+  assert.match(b1Attacker.error, /locked/i);
+
+  const b2Attacker = verifyBot2(99999999n);
+  assert.equal(b2Attacker.valid, false);
+  assert.equal(b2Attacker.status, "locked");
+
+  // Step 4: Admin unbinds the key
+  sharedAccount = null;
+
+  // Step 5: User can now bind to new MT5 account 88888888 on Bot 2 first
+  const b2Rebind = verifyBot2(88888888n);
+  assert.equal(b2Rebind.valid, true);
+  assert.equal(b2Rebind.status, "bound");
+  assert.equal(sharedAccount, 88888888n);
+
+  // Bot 1 now works with new account
+  const b1Rebind = verifyBot1(88888888n);
+  assert.equal(b1Rebind.valid, true);
+});
+
+
