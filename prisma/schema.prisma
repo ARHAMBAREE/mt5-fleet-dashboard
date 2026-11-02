@@ -446,7 +446,7 @@ model RealtimeEvent {
 }
 
 // ---------------------------------------------------------------------------
-// Expert Advisor Licenses
+// Expert Advisor Licenses (Bot 1)
 // ---------------------------------------------------------------------------
 
 model EaLicense {
@@ -467,6 +467,30 @@ model EaLicense {
   @@index([licenseKey, isActive])
   @@map("ea_licenses")
 }
+
+// ---------------------------------------------------------------------------
+// MT5 Fleet Licensing (Bot 2)
+// ---------------------------------------------------------------------------
+
+model Mt5FleetLicense {
+  id                 Int       @id @default(autoincrement())
+  licenseKey         String    @unique @map("license_key") @db.VarChar(64)
+  status             String    @default("unclaimed") @map("status") @db.VarChar(20)
+  boundAccountLogin  BigInt?   @map("bound_account_login")
+  boundAccountServer String?   @map("bound_account_server") @db.VarChar(128)
+  boundAt            DateTime? @map("bound_at")
+  expiresAt          DateTime? @map("expires_at")
+  lastCheckInAt      DateTime? @map("last_check_in_at")
+  lastSymbol         String?   @map("last_symbol") @db.VarChar(32)
+  lastIp             String?   @map("last_ip") @db.VarChar(45)
+  checkInCount       Int       @default(0) @map("check_in_count")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  @@index([boundAccountLogin])
+  @@index([licenseKey, status])
+  @@map("mt5_fleet_licenses")
+}
+
 
 
 
