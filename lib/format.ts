@@ -26,6 +26,12 @@ export function lots(n: number): string {
   return n.toFixed(2);
 }
 
+/** Format instrument price or take-profit level (e.g. 4,032.50). Returns "—" if not set. */
+export function fmtPrice(n: number | null | undefined): string {
+  if (n === null || n === undefined || !Number.isFinite(n) || n <= 0) return "—";
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+}
+
 /** Human "last seen" label: 3 sec ago / 5 min ago / 2 hours ago. */
 export function lastSeenLabel(iso: string | null | Date | undefined, now = Date.now()): string {
   if (!iso) return "never";

@@ -131,10 +131,11 @@ export async function handleVerify(req: NextRequest) {
   // 4. Atomic database verification using Prisma transaction to prevent race conditions
   try {
     const result = await prisma.$transaction(async (tx) => {
-      let record = await tx.mt5FleetLicense.findUnique({
+      const record = await tx.mt5FleetLicense.findUnique({
         where: { licenseKey },
       });
 
+      // Key not found
       // Key not found in mt5_fleet_licenses -> Universal check in ea_licenses
       if (!record) {
         const rawKey = normalizeLicenseKey(licenseKey);

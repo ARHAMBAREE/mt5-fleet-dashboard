@@ -39,3 +39,46 @@ test("custom account order prioritizes chosen account to show first", () => {
   assert.equal(rows[1].id, "acc-1");
   assert.equal(rows[2].id, "acc-3");
 });
+
+test("accountSummary validates buyTp and sellTp fields correctly", () => {
+  const { accountSummarySchema } = require("../shared/types");
+  const parsed = accountSummarySchema.parse({
+    id: "acc-tp",
+    displayName: "AM",
+    favorite: false,
+    login: "52030286",
+    broker: "RoboForex Ltd",
+    server: "RoboForex-Pro",
+    currency: "USD",
+    sourceCurrency: "USD",
+    mode: "LIVE",
+    balance: 104205.24,
+    equity: 104201.87,
+    credit: 0,
+    margin: 100,
+    freeMargin: 104101.87,
+    marginLevel: 104201,
+    leverage: 500,
+    tradeAllowed: true,
+    algoTrading: true,
+    terminalConnected: true,
+    eaStatus: "ONLINE",
+    lastHeartbeatAt: null,
+    lastSeenLabel: "1s ago",
+    floatingPl: -3.37,
+    todayRealizedPl: 1587.99,
+    monthlyRealizedPl: 4193.30,
+    buyTp: 4035.50,
+    sellTp: 4028.00,
+    drawdownPct: 0.1,
+    maxDrawdownPct: 0.5,
+    openPositions: 5,
+    agentId: null,
+    agentName: null,
+    groups: [],
+    updatedAt: new Date().toISOString(),
+  });
+
+  assert.equal(parsed.buyTp, 4035.50);
+  assert.equal(parsed.sellTp, 4028.00);
+});

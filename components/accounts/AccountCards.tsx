@@ -4,7 +4,7 @@ import Link from "next/link";
 import {compareAccountIdentity} from "@/shared/account-order";
 import type {AccountSummary} from "@/shared/types";
 import {apiSend} from "@/lib/client/api";
-import {money, signedMoney} from "@/lib/format";
+import {money, signedMoney, fmtPrice} from "@/lib/format";
 import {useCurrentUser} from "@/lib/client/useUser";
 
 export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onUpdated:()=>void}) {
@@ -153,6 +153,20 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
                 <div><dt>Balance</dt><dd>{money(r.balance, r.currency)}</dd></div>
                 <div><dt>Today realized</dt><dd className={r.todayRealizedPl == null ? "muted" : r.todayRealizedPl < 0 ? "neg" : "pos"}>{r.todayRealizedPl == null ? "Awaiting data" : signedMoney(r.todayRealizedPl, r.currency)}</dd><span className="account-day">Broker day</span></div>
                 <div><dt>Month realized</dt><dd className={r.monthlyRealizedPl == null ? "muted" : r.monthlyRealizedPl < 0 ? "neg" : "pos"}>{r.monthlyRealizedPl == null ? "Awaiting data" : signedMoney(r.monthlyRealizedPl, r.currency)}</dd><span className="account-day">Broker month</span></div>
+                <div>
+                  <dt>Take Profit (TP)</dt>
+                  <dd style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: "clamp(13px, 3.5vw, 15px)" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", maxWidth: 180 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: "rgba(34, 197, 94, 0.15)", color: "#22c55e", letterSpacing: "0.5px" }}>BUY TP</span>
+                      <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600, color: r.buyTp ? "#22c55e" : "#8a829d" }}>{fmtPrice(r.buyTp)}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", maxWidth: 180 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: "rgba(248, 113, 113, 0.15)", color: "#f87171", letterSpacing: "0.5px" }}>SELL TP</span>
+                      <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600, color: r.sellTp ? "#f87171" : "#8a829d" }}>{fmtPrice(r.sellTp)}</span>
+                    </div>
+                  </dd>
+                  <span className="account-day">Buy / Sell side</span>
+                </div>
               </dl>
               {editing === r.id && !isViewer ? (
                 <form className="account-name-form" onSubmit={(e) => { e.preventDefault(); void save(r.id, { displayName: name }); }}>

@@ -101,10 +101,22 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
     ? rawOrder.filter((x): x is string => typeof x === "string")
     : [];
 
-  const openRows = await prisma.position.groupBy({
-    by: ["accountId"], where: { accountId: { in: ids } }, _count: { _all: true },
+  const openPositions = await prisma.position.findMany({
+    where: { accountId: { in: ids } },
+    select: {
+      accountId: true,
+      type: true,
+      tp: true,
+      openTime: true,
+    },
   });
-  const openMap = new Map(openRows.map((r) => [r.accountId, r._count._all]));
+
+  const positionsByAccount = new Map<string, { type: "BUY" | "SELL"; tp: number; openTime: Date }[]>();
+  for (const pos of openPositions) {
+    const list = positionsByAccount.get(pos.accountId) ?? [];
+    list.push(pos);
+    positionsByAccount.set(pos.accountId, list);
+  }
 
   const rows: AccountSummary[] = accounts.map((a, idx) => {
     const unit = accountMoneyUnit(a.currency);
@@ -115,6 +127,18 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
     const lastBeat = revoked || !a.agentId ? null : a.lastHeartbeatAt;
     const orderIdx = orderList.indexOf(a.id);
     const sortOrder = orderIdx !== -1 ? orderIdx : (orderList.length > 0 ? 1000 + idx : 0);
+
+    const accPositions = positionsByAccount.get(a.id) ?? [];
+    const buyWithTp = accPositions.filter((p) => p.type === "BUY" && p.tp > 0);
+    const buyTp = buyWithTp.length > 0
+      ? buyWithTp.sort((x, y) => y.openTime.getTime() - x.openTime.getTime())[0].tp
+      : null;
+
+    const sellWithTp = accPositions.filter((p) => p.type === "SELL" && p.tp > 0);
+    const sellTp = sellWithTp.length > 0
+      ? sellWithTp.sort((x, y) => y.openTime.getTime() - x.openTime.getTime())[0].tp
+      : null;
+
     return {
       id: a.id,
       displayName: a.displayName, favorite: a.favorite,
@@ -140,9 +164,11 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
       floatingPl,
       todayRealizedPl: todayRealized(a.todayRealizedPl, a.realizedPlDay, now) === null ? null : a.todayRealizedPl! * unit.factor,
       monthlyRealizedPl: monthlyValue(a.monthlyPl, now) === null ? null : monthlyValue(a.monthlyPl, now)! * unit.factor,
+      buyTp,
+      sellTp,
       drawdownPct: currentDd,
       maxDrawdownPct: dd?.maxDdPct ?? 0,
-      openPositions: openMap.get(a.id) ?? 0,
+      openPositions: accPositions.length,
       agentId: a.agentId,
       agentName: a.agent ? (revoked ? `${a.agent.name} (revoked)` : a.agent.name) : null,
       groups: a.groupLinks.map((g) => g.group),

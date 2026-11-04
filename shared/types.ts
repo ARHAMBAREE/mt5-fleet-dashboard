@@ -89,6 +89,8 @@ export const accountSummarySchema = z.object({
   floatingPl: z.number(),
   todayRealizedPl: z.number().nullable(),
   monthlyRealizedPl: z.number().nullable().optional(),
+  buyTp: z.number().nullable().optional(),
+  sellTp: z.number().nullable().optional(),
   drawdownPct: z.number(),
   maxDrawdownPct: z.number(),
   openPositions: z.number(),
