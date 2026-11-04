@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 
-import GoldTargets from "@/components/dashboard/GoldTargets";
 import type { GoldTarget } from "@/shared/gold";
 import SummaryCards from "@/components/dashboard/SummaryCards";
 import AccountCards from "@/components/accounts/AccountCards";
@@ -63,7 +62,6 @@ export default function DashboardPage() {
 
       <SummaryCards totals={totals} goldTargets={accounts.data?.goldTargets ?? []} />
       <AccountCards rows={accounts.data?.rows ?? []} onUpdated={accounts.refetch} />
-      <GoldTargets targets={accounts.data?.goldTargets ?? []} error={accounts.error} loading={accounts.loading} />
 
       <div className="grid cols-2">
         <div className="card">
