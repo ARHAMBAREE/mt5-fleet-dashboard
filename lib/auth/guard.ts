@@ -25,6 +25,7 @@ export function handleApiError(err: unknown): NextResponse {
   if (err instanceof ApiError) return jsonError(err.status, err.code, err.message);
   if (err instanceof ZodError) {
     const issue = err.issues[0];
+    console.error("[api validation error]", issue ? `${issue.path.join(".")}: ${issue.message}` : "Invalid payload", err.issues);
     return jsonError(400, "VALIDATION", issue ? `${issue.path.join(".")}: ${issue.message}` : "Invalid payload");
   }
   console.error("[api]", err);
@@ -110,7 +111,8 @@ export async function readJson<T>(req: Request, schema: ZodType<T>): Promise<T> 
       if (size > maxBytes) { await reader.cancel(); throw new ApiError(413, "PAYLOAD_TOO_LARGE", "Maximum payload is 2 MiB"); }
       chunks.push(value);
     }
-    raw = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const text = Buffer.concat(chunks).toString("utf8").replace(/\0+$/g, "").trim();
+    raw = JSON.parse(text);
   } catch (err) {
     if (err instanceof ApiError) throw err;
     throw new ApiError(400, "VALIDATION", "Body must be valid JSON");

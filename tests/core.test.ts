@@ -69,5 +69,14 @@ test("accountInfoSchema validates snapshot with optional monthly profit fields",
     assert.equal(parsed.data.monthlyRealizedPl, 850.75);
     assert.equal(parsed.data.monthlyPlMonth, "2026-10");
   }
+
+  // Exness unlimited leverage (2147483647 or 20000) and USC currency
+  const exnessPayload = { ...payload, currency: "USC", leverage: 2147483647 };
+  const exnessParsed = accountInfoSchema.safeParse(exnessPayload);
+  assert.equal(exnessParsed.success, true);
+  if (exnessParsed.success) {
+    assert.equal(exnessParsed.data.leverage, 2147483647);
+    assert.equal(exnessParsed.data.currency, "USC");
+  }
 });
 

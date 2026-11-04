@@ -28,20 +28,22 @@ export const heartbeatSchema = z.object({
 
 export const accountInfoSchema = z.object({
   todayRealizedPl: finite().optional(),
-  realizedPlDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  realizedPlDay: z.string().max(32).optional(),
   monthlyRealizedPl: finite().optional(),
-  monthlyPlMonth: z.string().regex(/^\d{4}-\d{2}(-\d{2})?$/).optional(),
+  monthlyPlMonth: z.string().max(32).optional(),
   login: z.string().min(1).max(64),
   broker: z.string().max(120),
   server: z.string().max(120),
-  currency: z.string().min(1).max(12),
+  currency: z.string().min(1).max(32),
   balance: finite(),
   equity: finite(),
   credit: finite(),
   margin: finite(),
   freeMargin: finite(),
   marginLevel: finite(),
-  leverage: z.number().int().min(0).max(10_000),
+  leverage: z.union([z.number(), z.string().regex(/^\d+$/).transform(Number)])
+    .default(100)
+    .transform((v) => Math.min(2_147_483_647, Math.max(0, Math.floor(Number(v) || 0)))),
   mode: z.enum(["LIVE", "DEMO"]),
   tradeAllowed: z.boolean(),
   algoTrading: z.boolean(),
@@ -66,7 +68,7 @@ export const positionDtoSchema = z.object({
   commission: finite(),
   profit: finite(),
   magic: z.union([z.string().regex(/^-?\d{1,20}$/), z.number().int().min(Number.MIN_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER)]),
-  comment: z.string().max(255).default(""),
+  comment: z.string().default("").transform((c) => c.slice(0, 255)),
   openTime: z.number().int().min(0),
 });
 
@@ -88,7 +90,7 @@ export const orderDtoSchema = z.object({
   sl: finite(),
   tp: finite(),
   magic: z.union([z.string().regex(/^-?\d{1,20}$/), z.number().int().min(Number.MIN_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER)]),
-  comment: z.string().max(255).default(""),
+  comment: z.string().default("").transform((c) => c.slice(0, 255)),
   createTime: z.number().int().min(0),
 });
 
