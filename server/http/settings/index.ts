@@ -8,7 +8,7 @@ import { RETENTION_OPTIONS } from "@/shared/types";
 export const dynamic = "force-dynamic";
 
 const putSchema = z.object({
-  key: z.enum(["retention", "notifications", "thresholds", "display", "desktop", "accountOrder"]),
+  key: z.enum(["retention", "notifications", "thresholds", "display", "desktop", "accountOrder", "botAssignments"]),
   value: z.record(z.string(), z.unknown()),
 });
 
@@ -30,6 +30,7 @@ export const GET = withAuth({ limit: { key: "settings", limit: 240, windowSec: 6
       display: map.display ?? { theme: "dark", density: "comfortable" },
       desktop: map.desktop ?? { minimizeToTray: true, startOnBoot: false, notifyEnabled: true },
       accountOrder: map.accountOrder ?? { order: [] },
+      botAssignments: map.botAssignments ?? {},
       ...map,
     },
     retentionOptions: RETENTION_OPTIONS,

@@ -28,18 +28,43 @@ export const GET = withAuth<{ id: string }>(
 const editSchema = z.object({
   displayName: z.string().trim().max(80).optional(),
   favorite: z.boolean().optional(),
-}).strict().refine(v => v.displayName !== undefined || v.favorite !== undefined, "No changes provided");
+  botType: z.enum(["SAFE", "AGGRESSIVE", "NONE"]).optional(),
+}).strict().refine(v => v.displayName !== undefined || v.favorite !== undefined || v.botType !== undefined, "No changes provided");
 
 export const PATCH = withAuth<{ id: string }>({ minRole: "ADMIN", limit: {key: "account-edit", limit: 60, windowSec: 60} }, async (req, ctx) => {
   const {id} = await ctx.params;
   const body = await readJson(req, editSchema);
   const fleetUserId = await getEffectiveFleetUserId(ctx.user);
-  const result = await prisma.account.updateMany({where:{id,userId:fleetUserId},data:{
-    ...(body.displayName !== undefined ? {displayName:body.displayName || null} : {}),
-    ...(body.favorite !== undefined ? {favorite:body.favorite} : {}),
-  }});
-  if (!result.count) throw new ApiError(404,"NOT_FOUND","Account not found");
-  return Response.json({ok:true});
+
+  const account = await prisma.account.findFirst({ where: { id, userId: fleetUserId } });
+  if (!account) throw new ApiError(404, "NOT_FOUND", "Account not found");
+
+  if (body.displayName !== undefined || body.favorite !== undefined) {
+    await prisma.account.update({
+      where: { id },
+      data: {
+        ...(body.displayName !== undefined ? { displayName: body.displayName || null } : {}),
+        ...(body.favorite !== undefined ? { favorite: body.favorite } : {}),
+      },
+    });
+  }
+
+  if (body.botType !== undefined) {
+    const existing = await prisma.setting.findUnique({ where: { userId_key: { userId: fleetUserId, key: "botAssignments" } } }).catch(() => null);
+    const map = { ...((existing?.value as Record<string, string> | null) ?? {}) };
+    if (body.botType === "NONE") {
+      delete map[id];
+    } else {
+      map[id] = body.botType;
+    }
+    await prisma.setting.upsert({
+      where: { userId_key: { userId: fleetUserId, key: "botAssignments" } },
+      create: { userId: fleetUserId, key: "botAssignments", value: map },
+      update: { value: map },
+    });
+  }
+
+  return Response.json({ ok: true });
 });
 
 export const DELETE = withAuth<{ id: string }>(

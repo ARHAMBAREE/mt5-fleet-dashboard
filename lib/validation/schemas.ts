@@ -58,7 +58,7 @@ export const alertSchema = z.object({
 });
 
 export const settingsSchema = z.object({
-  key: z.enum(["retention", "notifications", "thresholds", "display", "desktop", "accountOrder"]),
+  key: z.enum(["retention", "notifications", "thresholds", "display", "desktop", "accountOrder", "botAssignments"]),
   value: z.record(z.string(), z.unknown()),
 });
 
@@ -93,6 +93,7 @@ export const fleetQuerySchema = z.object({
   server: z.string().max(120).optional(), currency: z.string().max(12).optional(),
   accountId: z.string().uuid().optional(), symbol: z.string().max(64).optional(),
   agentId: z.string().uuid().optional(), status: z.enum(["ONLINE", "WARNING", "OFFLINE"]).optional(),
+  botType: z.enum(["SAFE", "AGGRESSIVE", "ALL"]).optional(),
   sort: z.string().max(64).optional(), dir: z.enum(["asc", "desc"]).default("asc"),
   range: z.enum(["24h", "7d", "30d", "90d", "1y"]).default("30d"),
 });

@@ -97,6 +97,7 @@ export const accountSummarySchema = z.object({
   agentId: z.string().nullable(),
   agentName: z.string().nullable(),
   groups: z.array(z.object({ id: z.string(), name: z.string(), color: z.string() })),
+  botType: z.enum(["SAFE", "AGGRESSIVE"]).nullable().optional(),
   sortOrder: z.number().optional().default(0),
   updatedAt: z.string(),
 });

@@ -60,6 +60,59 @@ export default function SettingsPage() {
   const [orderSuccess, setOrderSuccess] = useState("");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
+  // Bot Allocation state
+  const [botSaving, setBotSaving] = useState<string | null>(null);
+  const [botSuccess, setBotSuccess] = useState("");
+  const [botFilter, setBotFilter] = useState<"ALL" | "SAFE" | "AGGRESSIVE" | "UNASSIGNED">("ALL");
+  const [botSearch, setBotSearch] = useState("");
+
+  const assignBot = useCallback(async (accountId: string, botType: "SAFE" | "AGGRESSIVE" | "NONE") => {
+    if (isViewer) return;
+    setBotSaving(accountId);
+    setBotSuccess("");
+    setError("");
+    try {
+      await apiSend("PATCH", `/api/accounts/${accountId}`, { botType });
+      setOrderedAccounts((prev) =>
+        prev.map((a) => (a.id === accountId ? { ...a, botType: botType === "NONE" ? null : botType } : a))
+      );
+      setBotSuccess(`Updated bot assignment.`);
+      setTimeout(() => setBotSuccess(""), 3000);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Failed to update bot assignment");
+    } finally {
+      setBotSaving(null);
+    }
+  }, [isViewer]);
+
+  const bulkAssign = useCallback(async (botType: "SAFE" | "AGGRESSIVE" | "NONE", targetIds: string[]) => {
+    if (isViewer || !targetIds.length) return;
+    setBotSaving("bulk");
+    setBotSuccess("");
+    setError("");
+    try {
+      const currentRes = await apiGet<{ settings: { botAssignments?: Record<string, string> } }>("/api/settings");
+      const currentMap = { ...(currentRes?.settings?.botAssignments || {}) };
+      for (const id of targetIds) {
+        if (botType === "NONE") delete currentMap[id];
+        else currentMap[id] = botType;
+      }
+      await apiSend("PUT", "/api/settings", {
+        key: "botAssignments",
+        value: currentMap,
+      });
+      setOrderedAccounts((prev) =>
+        prev.map((a) => (targetIds.includes(a.id) ? { ...a, botType: botType === "NONE" ? null : botType } : a))
+      );
+      setBotSuccess(`Updated ${targetIds.length} accounts.`);
+      setTimeout(() => setBotSuccess(""), 3000);
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : "Bulk update failed");
+    } finally {
+      setBotSaving(null);
+    }
+  }, [isViewer]);
+
   const loadAccounts = useCallback(async () => {
     setAccountsLoading(true);
     try {
@@ -247,6 +300,23 @@ export default function SettingsPage() {
 
   const s = settings.data?.settings;
 
+  const safeAccounts = orderedAccounts.filter((a) => a.botType === "SAFE");
+  const aggressiveAccounts = orderedAccounts.filter((a) => a.botType === "AGGRESSIVE");
+  const unassignedAccounts = orderedAccounts.filter((a) => !a.botType || (a.botType !== "SAFE" && a.botType !== "AGGRESSIVE"));
+
+  const safeEquity = safeAccounts.reduce((sum, a) => sum + a.equity, 0);
+  const aggressiveEquity = aggressiveAccounts.reduce((sum, a) => sum + a.equity, 0);
+
+  const filteredBotAccounts = orderedAccounts.filter((a) => {
+    const needle = botSearch.trim().toLowerCase();
+    const matchesSearch = !needle || [a.displayName, a.login, a.broker, a.server].some((str) => str?.toLowerCase().includes(needle));
+    if (!matchesSearch) return false;
+    if (botFilter === "SAFE") return a.botType === "SAFE";
+    if (botFilter === "AGGRESSIVE") return a.botType === "AGGRESSIVE";
+    if (botFilter === "UNASSIGNED") return !a.botType || (a.botType !== "SAFE" && a.botType !== "AGGRESSIVE");
+    return true;
+  });
+
   return (
     <div>
       <div className="page-head">
@@ -277,6 +347,247 @@ export default function SettingsPage() {
           <a className="btn primary" href="/licenses">🔑 EA Licenses → Generate & Manage</a>
         </div>
       )}
+
+      {/* Bot Allocation & Sorting (Safe vs Aggressive) */}
+      <div id="bot-allocation" className="card mb" style={{ borderColor: "rgba(16, 185, 129, 0.35)" }}>
+        <div className="card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span>🤖 Bot Allocation (Safe vs Aggressive)</span>
+            {botSaving && <span className="small muted">({botSaving === "bulk" ? "Saving bulk…" : "Saving…"})</span>}
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {!isViewer && unassignedAccounts.length > 0 && (
+              <button
+                type="button"
+                className="btn sm"
+                style={{ fontSize: 11, borderColor: "rgba(16, 185, 129, 0.4)", color: "#34d399" }}
+                disabled={botSaving !== null}
+                onClick={() => bulkAssign("SAFE", unassignedAccounts.map((a) => a.id))}
+              >
+                + Assign Unassigned to Safe ({unassignedAccounts.length})
+              </button>
+            )}
+            {!isViewer && (safeAccounts.length > 0 || aggressiveAccounts.length > 0) && (
+              <button
+                type="button"
+                className="btn sm"
+                style={{ fontSize: 11 }}
+                disabled={botSaving !== null}
+                onClick={() => {
+                  if (confirm("Reset all accounts to unassigned (no bot)?")) {
+                    bulkAssign("NONE", orderedAccounts.map((a) => a.id));
+                  }
+                }}
+              >
+                ↺ Clear All Bots
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="small muted mb">
+          Sort and categorize your accounts into <strong>Safe Bot</strong> and <strong>Aggressive Bot</strong> tabs on your Dashboard. Each tab will isolate that bot&apos;s accounts and aggregate its specific equity, balance, and P/L metrics.
+        </div>
+
+        {botSuccess && <div className="form-ok mb">{botSuccess}</div>}
+
+        {/* Bot Allocation Summary Badges */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
+          <div style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.3)", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🛡️</span>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#34d399" }}>Safe Bot: {safeAccounts.length} accounts</div>
+              <div className="small muted" style={{ fontSize: 11 }}>Total Equity: {money(safeEquity, "USD")}</div>
+            </div>
+          </div>
+
+          <div style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(249, 115, 22, 0.1)", border: "1px solid rgba(249, 115, 22, 0.3)", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 16 }}>⚡</span>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#fb923c" }}>Aggressive Bot: {aggressiveAccounts.length} accounts</div>
+              <div className="small muted" style={{ fontSize: 11 }}>Total Equity: {money(aggressiveEquity, "USD")}</div>
+            </div>
+          </div>
+
+          <div style={{ padding: "8px 14px", borderRadius: 8, background: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 16 }}>⚪</span>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>Unassigned: {unassignedAccounts.length} accounts</div>
+              <div className="small muted" style={{ fontSize: 11 }}>Shows under &quot;All Accounts&quot;</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter & Search Bar */}
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+          <input
+            className="input"
+            style={{ maxWidth: 220, height: 32, fontSize: 12 }}
+            placeholder="Search accounts to sort…"
+            value={botSearch}
+            onChange={(e) => setBotSearch(e.target.value)}
+          />
+          <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.04)", padding: 2, borderRadius: 8, border: "1px solid var(--border)", gap: 2 }}>
+            {(["ALL", "SAFE", "AGGRESSIVE", "UNASSIGNED"] as const).map((filter) => {
+              const count =
+                filter === "ALL"
+                  ? orderedAccounts.length
+                  : filter === "SAFE"
+                  ? safeAccounts.length
+                  : filter === "AGGRESSIVE"
+                  ? aggressiveAccounts.length
+                  : unassignedAccounts.length;
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  style={{
+                    border: "none",
+                    background: botFilter === filter ? "var(--panel)" : "transparent",
+                    color: botFilter === filter ? "#fff" : "var(--muted)",
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setBotFilter(filter)}
+                >
+                  {filter === "ALL" ? "All" : filter === "SAFE" ? "🛡️ Safe" : filter === "AGGRESSIVE" ? "⚡ Aggr" : "Unassigned"} ({count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Accounts List for Bot Assignment */}
+        {filteredBotAccounts.length === 0 ? (
+          <div className="small muted" style={{ padding: 16, textAlign: "center" }}>
+            No accounts match this filter.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {filteredBotAccounts.map((acc) => {
+              const title = acc.displayName || `Account ${acc.login}`;
+              const initials = acc.displayName ? acc.displayName.trim().slice(0, 2).toUpperCase() : acc.login.slice(-2);
+              const currentBot = acc.botType || "NONE";
+              const isSaving = botSaving === acc.id || botSaving === "bulk";
+
+              return (
+                <div
+                  key={acc.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    background:
+                      currentBot === "SAFE"
+                        ? "rgba(16, 185, 129, 0.05)"
+                        : currentBot === "AGGRESSIVE"
+                        ? "rgba(249, 115, 22, 0.05)"
+                        : "rgba(255, 255, 255, 0.02)",
+                    border:
+                      currentBot === "SAFE"
+                        ? "1px solid rgba(16, 185, 129, 0.3)"
+                        : currentBot === "AGGRESSIVE"
+                        ? "1px solid rgba(249, 115, 22, 0.3)"
+                        : "1px solid rgba(255, 255, 255, 0.06)",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 200, flex: 1 }}>
+                    <div className="account-avatar" style={{ width: 32, height: 32, minWidth: 32, fontSize: 12 }} aria-hidden="true">
+                      {initials}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span className="bold" style={{ fontSize: 13.5 }}>{title}</span>
+                        <span className={`account-dot ${acc.eaStatus.toLowerCase()}`} />
+                      </div>
+                      <div className="small muted" style={{ fontSize: 11 }}>
+                        #{acc.login} · {acc.broker} ({acc.server}) · Equity: {money(acc.equity, acc.currency)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3-way segmented buttons */}
+                  {!isViewer && (
+                    <div style={{ display: "inline-flex", background: "rgba(0,0,0,0.3)", borderRadius: 8, padding: 3, border: "1px solid var(--border)", gap: 3 }}>
+                      <button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={() => assignBot(acc.id, "SAFE")}
+                        style={{
+                          border: currentBot === "SAFE" ? "1px solid rgba(16, 185, 129, 0.5)" : "1px solid transparent",
+                          background: currentBot === "SAFE" ? "rgba(16, 185, 129, 0.25)" : "transparent",
+                          color: currentBot === "SAFE" ? "#34d399" : "var(--muted)",
+                          padding: "5px 12px",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: isSaving ? "not-allowed" : "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <span>🛡️</span>
+                        <span>Safe Bot</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={() => assignBot(acc.id, "AGGRESSIVE")}
+                        style={{
+                          border: currentBot === "AGGRESSIVE" ? "1px solid rgba(249, 115, 22, 0.5)" : "1px solid transparent",
+                          background: currentBot === "AGGRESSIVE" ? "rgba(249, 115, 22, 0.25)" : "transparent",
+                          color: currentBot === "AGGRESSIVE" ? "#fb923c" : "var(--muted)",
+                          padding: "5px 12px",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: isSaving ? "not-allowed" : "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <span>⚡</span>
+                        <span>Aggressive</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isSaving}
+                        onClick={() => assignBot(acc.id, "NONE")}
+                        style={{
+                          border: currentBot === "NONE" ? "1px solid var(--border)" : "1px solid transparent",
+                          background: currentBot === "NONE" ? "rgba(255, 255, 255, 0.08)" : "transparent",
+                          color: currentBot === "NONE" ? "#fff" : "var(--muted-2)",
+                          padding: "5px 10px",
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: isSaving ? "not-allowed" : "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        None
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Account Card Order & Priority */}
       <div id="account-order" className="card mb" style={{ borderColor: "rgba(59, 130, 246, 0.3)" }}>

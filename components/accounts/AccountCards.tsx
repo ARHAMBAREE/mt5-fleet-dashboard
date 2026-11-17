@@ -16,7 +16,7 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
   const [pending,setPending]=useState<string|null>(null);
   const [error,setError]=useState("");
 
-  async function save(id:string,data:{displayName?:string;favorite?:boolean}) {
+  async function save(id:string,data:{displayName?:string;favorite?:boolean;botType?:"SAFE"|"AGGRESSIVE"|"NONE"}) {
     setPending(id);setError("");
     try {await apiSend("PATCH",`/api/accounts/${id}`,data);if(data.displayName!==undefined)setEditing(null);onUpdated();}
     catch(e){setError(e instanceof Error?e.message:"Could not save account");}
@@ -109,36 +109,80 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
                   <Link href={`/accounts/${r.id}`} className="account-name">{title}</Link>
                   <div className="account-broker">#{r.login} · {r.broker}</div>
                 </div>
-                {!isViewer && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    {isShowingFirst && (
-                      <span
-                        title="This account is set to show first"
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 700,
-                          padding: "2px 6px",
-                          borderRadius: 4,
-                          background: "rgba(59, 130, 246, 0.2)",
-                          color: "#60a5fa",
-                          border: "1px solid rgba(96, 165, 250, 0.3)",
-                          letterSpacing: "0.5px",
-                        }}
-                      >
-                        ★ #1
-                      </span>
-                    )}
-                    <button
-                      className={`favorite-button ${r.favorite ? "selected" : ""}`}
-                      aria-label={`${r.favorite ? "Unfavorite" : "Favorite"} ${title}`}
-                      aria-pressed={r.favorite}
-                      disabled={pending === r.id}
-                      onClick={() => void save(r.id, { favorite: !r.favorite })}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {r.botType === "SAFE" && (
+                    <span
+                      title="Assigned to Safe Bot"
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "2px 6px",
+                        borderRadius: 4,
+                        background: "rgba(16, 185, 129, 0.15)",
+                        color: "#34d399",
+                        border: "1px solid rgba(16, 185, 129, 0.35)",
+                        letterSpacing: "0.5px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 3,
+                      }}
                     >
-                      {r.favorite ? "★" : "☆"}
-                    </button>
-                  </div>
-                )}
+                      <span>🛡️</span>
+                      <span>SAFE</span>
+                    </span>
+                  )}
+                  {r.botType === "AGGRESSIVE" && (
+                    <span
+                      title="Assigned to Aggressive Bot"
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "2px 6px",
+                        borderRadius: 4,
+                        background: "rgba(249, 115, 22, 0.15)",
+                        color: "#fb923c",
+                        border: "1px solid rgba(249, 115, 22, 0.35)",
+                        letterSpacing: "0.5px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 3,
+                      }}
+                    >
+                      <span>⚡</span>
+                      <span>AGGR</span>
+                    </span>
+                  )}
+                  {!isViewer && (
+                    <>
+                      {isShowingFirst && (
+                        <span
+                          title="This account is set to show first"
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            padding: "2px 6px",
+                            borderRadius: 4,
+                            background: "rgba(59, 130, 246, 0.2)",
+                            color: "#60a5fa",
+                            border: "1px solid rgba(96, 165, 250, 0.3)",
+                            letterSpacing: "0.5px",
+                          }}
+                        >
+                          ★ #1
+                        </span>
+                      )}
+                      <button
+                        className={`favorite-button ${r.favorite ? "selected" : ""}`}
+                        aria-label={`${r.favorite ? "Unfavorite" : "Favorite"} ${title}`}
+                        aria-pressed={r.favorite}
+                        disabled={pending === r.id}
+                        onClick={() => void save(r.id, { favorite: !r.favorite })}
+                      >
+                        {r.favorite ? "★" : "☆"}
+                      </button>
+                    </>
+                  )}
+                </div>
               </header>
               <div className="account-card-status">
                 <span>
@@ -182,6 +226,28 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
                   <Link href={`/accounts/${r.id}`}>View account <span aria-hidden="true">›</span></Link>
                   {!isViewer && (
                     <>
+                      <select
+                        aria-label="Assign Bot Tab"
+                        title="Assign to Safe Bot or Aggressive Bot"
+                        style={{
+                          background: r.botType === "SAFE" ? "rgba(16, 185, 129, 0.12)" : r.botType === "AGGRESSIVE" ? "rgba(249, 115, 22, 0.12)" : "rgba(255, 255, 255, 0.04)",
+                          border: r.botType === "SAFE" ? "1px solid rgba(16, 185, 129, 0.35)" : r.botType === "AGGRESSIVE" ? "1px solid rgba(249, 115, 22, 0.35)" : "1px solid var(--border)",
+                          color: r.botType === "SAFE" ? "#34d399" : r.botType === "AGGRESSIVE" ? "#fb923c" : "var(--muted)",
+                          borderRadius: 6,
+                          padding: "3px 6px",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          outline: "none",
+                        }}
+                        value={r.botType || "NONE"}
+                        disabled={pending === r.id}
+                        onChange={(e) => void save(r.id, { botType: e.target.value as "SAFE" | "AGGRESSIVE" | "NONE" })}
+                      >
+                        <option value="NONE" style={{ background: "#1b1928", color: "#f0edf8" }}>No Bot</option>
+                        <option value="SAFE" style={{ background: "#1b1928", color: "#34d399" }}>🛡️ Safe Bot</option>
+                        <option value="AGGRESSIVE" style={{ background: "#1b1928", color: "#fb923c" }}>⚡ Aggressive Bot</option>
+                      </select>
                       {!isShowingFirst && rows.length > 1 && (
                         <button
                           className="rename-account"

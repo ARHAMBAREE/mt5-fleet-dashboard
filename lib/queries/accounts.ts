@@ -18,6 +18,7 @@ export interface AccountFilters {
   broker?: string;
   agentId?: string;
   status?: "ONLINE" | "WARNING" | "OFFLINE";
+  botType?: "SAFE" | "AGGRESSIVE" | "ALL";
   sort?: string;
   dir?: "asc" | "desc";
 }
@@ -57,7 +58,7 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
   const now = new Date();
   void prisma.account.deleteMany({ where: { login: "test-verify" } }).catch(() => {});
 
-  const [accounts, orderSetting] = await Promise.all([
+  const [accounts, orderSetting, botSetting] = await Promise.all([
     prisma.account.findMany({
       where: {
         userId,
@@ -91,6 +92,9 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
     prisma.setting.findUnique({
       where: { userId_key: { userId, key: "accountOrder" } },
     }).catch(() => null),
+    prisma.setting.findUnique({
+      where: { userId_key: { userId, key: "botAssignments" } },
+    }).catch(() => null),
   ]);
 
   if (!accounts.length) return { rows: [], totals: emptyTotals };
@@ -100,6 +104,9 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
   const orderList: string[] = Array.isArray(rawOrder)
     ? rawOrder.filter((x): x is string => typeof x === "string")
     : [];
+
+  const rawBot = (botSetting?.value as Record<string, string> | null) ?? {};
+  const botMap = typeof rawBot === "object" && rawBot !== null ? rawBot : {};
 
   const openPositions = await prisma.position.findMany({
     where: { accountId: { in: ids } },
@@ -172,19 +179,24 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
       agentId: a.agentId,
       agentName: a.agent ? (revoked ? `${a.agent.name} (revoked)` : a.agent.name) : null,
       groups: a.groupLinks.map((g) => g.group),
+      botType: (botMap[a.id] === "SAFE" || botMap[a.id] === "AGGRESSIVE" ? botMap[a.id] : null) as "SAFE" | "AGGRESSIVE" | null,
       sortOrder,
       updatedAt: a.updatedAt.toISOString(),
     };
   });
 
-  const filtered = filters.status ? rows.filter((r) => r.eaStatus === filters.status) : rows;
+  let filtered = rows;
+  if (filters.status) filtered = filtered.filter((r) => r.eaStatus === filters.status);
+  if (filters.botType && filters.botType !== "ALL") filtered = filtered.filter((r) => r.botType === filters.botType);
   sortRows(filtered, filters.sort ?? "account", filters.dir ?? "asc");
 
-  const currencies = [...new Set(rows.map(r => r.currency))];
+  const currencies = [...new Set(filtered.map(r => r.currency))];
   const mixed = currencies.length > 1;
-  const monthly = accounts.map(a => ({ value: monthlyValue(a.monthlyPl, now), factor: accountMoneyUnit(a.currency).factor, state: readMonthlyPl(a.monthlyPl) }));
+  const filteredIds = new Set(filtered.map(r => r.id));
+  const filteredAccounts = accounts.filter(a => filteredIds.has(a.id));
+  const monthly = filteredAccounts.map(a => ({ value: monthlyValue(a.monthlyPl, now), factor: accountMoneyUnit(a.currency).factor, state: readMonthlyPl(a.monthlyPl) }));
   const starts = monthly.flatMap(m => m.state ? [m.state.startedAt] : []).sort();
-  const reportingToday = rows.filter(r => r.todayRealizedPl !== null);
+  const reportingToday = filtered.filter(r => r.todayRealizedPl !== null);
   const reportingMonthly = monthly.filter(m => m.value !== null);
   const totals = {
     monthlyRealizedPl: mixed || reportingMonthly.length === 0 ? null : reportingMonthly.reduce((sum, m) => sum + m.value! * m.factor, 0),
@@ -193,15 +205,15 @@ export async function getAccountSummaries(userId: string, filters: AccountFilter
     currencies,
     todayRealizedPl: mixed || reportingToday.length === 0 ? null : reportingToday.reduce((s, r) => s + r.todayRealizedPl!, 0),
     realizedReportingAccounts: reportingToday.length,
-    totalAccounts: rows.length,
-    online: rows.filter((r) => r.eaStatus === "ONLINE").length,
-    warning: rows.filter((r) => r.eaStatus === "WARNING").length,
-    offline: rows.filter((r) => r.eaStatus === "OFFLINE").length,
-    totalBalance: mixed ? null : rows.reduce((s, r) => s + r.balance, 0),
-    totalEquity: mixed ? null : rows.reduce((s, r) => s + r.equity, 0),
-    floatingPl: mixed ? null : rows.reduce((s, r) => s + r.floatingPl, 0),
-    totalDrawdownPct: rows.reduce((s, r) => Math.max(s, r.drawdownPct), 0),
-    openPositions: rows.reduce((s, r) => s + r.openPositions, 0),
+    totalAccounts: filtered.length,
+    online: filtered.filter((r) => r.eaStatus === "ONLINE").length,
+    warning: filtered.filter((r) => r.eaStatus === "WARNING").length,
+    offline: filtered.filter((r) => r.eaStatus === "OFFLINE").length,
+    totalBalance: mixed ? null : filtered.reduce((s, r) => s + r.balance, 0),
+    totalEquity: mixed ? null : filtered.reduce((s, r) => s + r.equity, 0),
+    floatingPl: mixed ? null : filtered.reduce((s, r) => s + r.floatingPl, 0),
+    totalDrawdownPct: filtered.reduce((s, r) => Math.max(s, r.drawdownPct), 0),
+    openPositions: filtered.reduce((s, r) => s + r.openPositions, 0),
   };
 
   return { rows: filtered, totals };
