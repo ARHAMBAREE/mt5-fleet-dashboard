@@ -1,5 +1,5 @@
 "use client";
-import {useState} from "react";
+import {useState, useEffect} from "react";
 import Link from "next/link";
 import {compareAccountIdentity} from "@/shared/account-order";
 import type {AccountSummary} from "@/shared/types";
@@ -15,6 +15,26 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
   const [name,setName]=useState("");
   const [pending,setPending]=useState<string|null>(null);
   const [error,setError]=useState("");
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openMenu) return;
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".account-menu-container")) {
+        setOpenMenu(null);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpenMenu(null);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [openMenu]);
 
   async function save(id:string,data:{displayName?:string;favorite?:boolean;botType?:"SAFE"|"AGGRESSIVE"|"NONE"}) {
     setPending(id);setError("");
@@ -222,10 +242,13 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
                   </div>
                 </form>
               ) : (
-                <div className="account-card-footer">
-                  <Link href={`/accounts/${r.id}`}>View account <span aria-hidden="true">›</span></Link>
+                <div className="account-card-footer" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <Link href={`/accounts/${r.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 36, flex: 1, minWidth: 0 }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>View account</span>
+                    <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>›</span>
+                  </Link>
                   {!isViewer && (
-                    <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                       <select
                         aria-label="Assign Bot Tab"
                         title="Assign to Safe Bot or Aggressive Bot"
@@ -234,7 +257,7 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
                           border: r.botType === "SAFE" ? "1px solid rgba(16, 185, 129, 0.35)" : r.botType === "AGGRESSIVE" ? "1px solid rgba(249, 115, 22, 0.35)" : "1px solid var(--border)",
                           color: r.botType === "SAFE" ? "#34d399" : r.botType === "AGGRESSIVE" ? "#fb923c" : "var(--muted)",
                           borderRadius: 6,
-                          padding: "3px 6px",
+                          padding: "4px 8px",
                           fontSize: 11,
                           fontWeight: 600,
                           cursor: "pointer",
@@ -248,36 +271,160 @@ export default function AccountCards({rows,onUpdated}:{rows:AccountSummary[];onU
                         <option value="SAFE" style={{ background: "#1b1928", color: "#34d399" }}>🛡️ Safe Bot</option>
                         <option value="AGGRESSIVE" style={{ background: "#1b1928", color: "#fb923c" }}>⚡ Aggressive Bot</option>
                       </select>
-                      {!isShowingFirst && rows.length > 1 && (
+
+                      {/* 3-dot Menu for Excess Options */}
+                      <div className="account-menu-container" style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                         <button
-                          className="rename-account"
-                          style={{ color: "#60a5fa" }}
-                          title="Show this account first"
+                          type="button"
+                          className="account-menu-trigger"
+                          aria-label={`More options for ${title}`}
+                          aria-expanded={openMenu === r.id}
+                          aria-haspopup="true"
+                          title="More options"
                           disabled={pending === r.id}
-                          onClick={() => void makeFirst(r.id)}
+                          onClick={() => setOpenMenu(openMenu === r.id ? null : r.id)}
+                          style={{
+                            background: openMenu === r.id ? "rgba(255, 255, 255, 0.14)" : "rgba(255, 255, 255, 0.04)",
+                            border: "1px solid",
+                            borderColor: openMenu === r.id ? "rgba(255, 255, 255, 0.25)" : "var(--border)",
+                            borderRadius: 6,
+                            width: 28,
+                            height: 28,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: openMenu === r.id ? "#fff" : "var(--muted)",
+                            cursor: "pointer",
+                            padding: 0,
+                            transition: "all 0.15s ease",
+                          }}
                         >
-                          ⭐ Show first
+                          <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+                            <circle cx="8" cy="3" r="1.5" />
+                            <circle cx="8" cy="8" r="1.5" />
+                            <circle cx="8" cy="13" r="1.5" />
+                          </svg>
                         </button>
-                      )}
-                      <button
-                        className="rename-account"
-                        onClick={() => {
-                          setEditing(r.id);
-                          setName(r.displayName ?? "");
-                          setError("");
-                        }}
-                      >
-                        Edit name
-                      </button>
-                      <button
-                        className="rename-account"
-                        style={{ color: "#ff555e" }}
-                        disabled={pending === r.id}
-                        onClick={() => void remove(r.id, title)}
-                      >
-                        Delete
-                      </button>
-                    </>
+
+                        {openMenu === r.id && (
+                          <div
+                            role="menu"
+                            className="account-dropdown-menu"
+                            style={{
+                              position: "absolute",
+                              bottom: "calc(100% + 6px)",
+                              right: 0,
+                              minWidth: 150,
+                              background: "#181524",
+                              border: "1px solid rgba(255, 255, 255, 0.14)",
+                              borderRadius: 10,
+                              padding: "4px",
+                              boxShadow: "0 10px 25px -4px rgba(0, 0, 0, 0.7), 0 4px 10px -2px rgba(0, 0, 0, 0.5)",
+                              zIndex: 50,
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 2,
+                            }}
+                          >
+                            {!isShowingFirst && rows.length > 1 && (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                disabled={pending === r.id}
+                                onClick={() => {
+                                  setOpenMenu(null);
+                                  void makeFirst(r.id);
+                                }}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  width: "100%",
+                                  padding: "7px 10px",
+                                  border: "none",
+                                  borderRadius: 6,
+                                  background: "transparent",
+                                  color: "#93c5fd",
+                                  fontSize: 12,
+                                  fontWeight: 500,
+                                  textAlign: "left",
+                                  cursor: "pointer",
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(147, 197, 253, 0.1)")}
+                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                              >
+                                <span>⭐</span>
+                                <span>Show first</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              role="menuitem"
+                              disabled={pending === r.id}
+                              onClick={() => {
+                                setOpenMenu(null);
+                                setEditing(r.id);
+                                setName(r.displayName ?? "");
+                                setError("");
+                              }}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                width: "100%",
+                                padding: "7px 10px",
+                                border: "none",
+                                borderRadius: 6,
+                                background: "transparent",
+                                color: "#e2daf0",
+                                fontSize: 12,
+                                fontWeight: 500,
+                                textAlign: "left",
+                                cursor: "pointer",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                            >
+                              <span>✏️</span>
+                              <span>Edit name</span>
+                            </button>
+
+                            <div style={{ height: 1, background: "rgba(255, 255, 255, 0.08)", margin: "3px 0" }} />
+
+                            <button
+                              type="button"
+                              role="menuitem"
+                              disabled={pending === r.id}
+                              onClick={() => {
+                                setOpenMenu(null);
+                                void remove(r.id, title);
+                              }}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                width: "100%",
+                                padding: "7px 10px",
+                                border: "none",
+                                borderRadius: 6,
+                                background: "transparent",
+                                color: "#f87171",
+                                fontSize: 12,
+                                fontWeight: 500,
+                                textAlign: "left",
+                                cursor: "pointer",
+                              }}
+                              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(248, 113, 113, 0.12)")}
+                              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                            >
+                              <span>🗑️</span>
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
